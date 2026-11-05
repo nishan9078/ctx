@@ -1,0 +1,1 @@
+{"name":"feature-fixture","private":true,"type":"module","scripts":{"build":"node --check index.js","test":"node --test index.test.js"}}
