@@ -6,17 +6,35 @@ import { pathToFileURL } from 'node:url';
 import type { EnvironmentOptions } from '../../../packages/environment/src/types.js';
 import { CodexSdkAdapter } from '../../../packages/agents/src/codex-sdk.adapter.js';
 import { runTask, resumeTask, databasePath } from '../../../packages/core/src/orchestrator.js';
+import { startTerminal, login } from './terminal.js';
+import { doctor } from './doctor.js';
+import { CodexSecurityAdapter } from '../../../packages/security/src/codex-security.adapter.js';
+import { randomUUID } from 'node:crypto';
+import { tmpdir } from 'node:os';
 import { TaskStore } from '../../../packages/persistence/src/database.js';
 export async function main(args = process.argv.slice(2)): Promise<number> {
   const { values, positionals } = parseArgs({ args, allowPositionals: true, options: {
     repo: { type: 'string', default: '.' }, output: { type: 'string' }, build: { type: 'string' }, test: { type: 'string' },
     execution: { type: 'string' }, image: { type: 'string' }, services: { type: 'string' }, 'max-recoveries': { type: 'string' }, 'allow-image-pull': { type: 'boolean' }, 'allow-dependency-install': { type: 'boolean' },
     model: { type: 'string' }, timeout: { type: 'string' }, plan: { type: 'string' }, 'max-repairs': { type: 'string' },
-    help: { type: 'boolean', short: 'h' },
+    version: { type: 'boolean', short: 'v' }, help: { type: 'boolean', short: 'h' },
   } });
   const [command, argument] = positionals;
-  if (values.help || !command) {
-    console.log('harness run "request" --repo . [--build "command"] [--test "command"] [--output path] [--model model] [--timeout seconds] [--plan plan.json] [--max-repairs 0] [--execution docker|host] [--image image] [--services services.json] [--max-recoveries 3] [--allow-image-pull] [--allow-dependency-install]\nharness status [task-id] --repo . [--output path]\nharness resume <task-id> --repo . [--output path]\nharness logs <task-id> --repo . [--output path]\nharness diff <task-id> --repo . [--output path]'); return 0;
+  if (values.version) { console.log('ctx 0.1.0'); return 0; }
+  if (values.help) {
+    console.log('ctx — local engineering workspace\nUsage: ctx [--repo path]              Open the terminal interface\n       ctx doctor                    Check local prerequisites\n       ctx login                     Sign in to the connected provider\n       ctx security --repo path      Run an explicit security review\n\nctx run "request" --repo . [--build "command"] [--test "command"] [--output path] [--model model] [--timeout seconds] [--plan plan.json] [--max-repairs 0] [--execution docker|host] [--image image] [--services services.json] [--max-recoveries 3] [--allow-image-pull] [--allow-dependency-install]\nctx status [task-id] --repo . [--output path]\nctx resume <task-id> --repo . [--output path]\nctx logs <task-id> --repo . [--output path]\nctx diff <task-id> --repo . [--output path]'); return 0;
+  }
+  if (!command || command === 'ui') {
+    if (command === 'ui' && positionals.length > 1) throw new Error('Use ctx ui --repo path');
+    if (values.execution && !['docker', 'host'].includes(values.execution)) throw new Error('Execution must be docker or host');
+    return startTerminal({ repositoryPath: values.repo, execution: values.execution as 'docker' | 'host' | undefined });
+  }
+  if (command === 'doctor' || command === 'login' || command === 'security') {
+    if (positionals.length > 1) throw new Error(`Use ctx ${command} [--repo path]`);
+    if (command === 'doctor') return doctor();
+    if (command === 'login') return login();
+    const result = await new CodexSecurityAdapter().scan({ repositoryPath: resolve(values.repo!), outputDirectory: join(tmpdir(), `ctx-security-${randomUUID()}`) });
+    console.log(JSON.stringify(result, null, 2)); return result.status === 'passed' ? 0 : 1;
   }
   if (positionals.length > 2 || (command !== 'status' && !argument?.trim())) throw new Error('Expected a command and one request or task ID');
   const root = resolve(values.output ?? join(values.repo!, '.harness'));

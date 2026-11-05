@@ -1,4 +1,5 @@
 import { EnvironmentManager, createEnvironmentState } from '../../environment/src/environment-manager.js';
+import { DockerAccessError } from '../../environment/src/docker-diagnostics.js';
 import { detectEnvironment } from '../../environment/src/service-detector.js';
 import { EnvironmentUnavailable, type DockerDriver, type EnvironmentOptions } from '../../environment/src/types.js';
 import { redact } from '../../shared/src/redact.js';
@@ -211,6 +212,16 @@ async function executeTask(input: ResumeInput, agent: AgentAdapter, recovering: 
     }
   } catch (error) {
     if (leaseError) throw leaseError;
+    if (error instanceof DockerAccessError && task.environment) {
+      const path = join(task.directory, 'environment', 'docker-diagnostics.json');
+      await mkdir(dirname(path), { recursive: true });
+      await atomicWrite(path, JSON.stringify(error.diagnostic, null, 2) + '\n');
+      store.artifact(task.id, owner, path, sha(readFileSync(path)), 'docker-diagnostics');
+      update('environment.docker.blocked', error.diagnostic, current => {
+        current.environment!.dockerDiagnostic = error.diagnostic;
+        current.environment!.dockerDiagnosticArtifact = path;
+      });
+    }
     if (!terminal(task.status)) transition(controller.signal.aborted && input.signal?.aborted ? 'cancelled' : error instanceof EnvironmentUnavailable ? 'blocked' : 'failed', current => { current.error = redact(String(error));
       for (const step of current.plan.steps) if (step.status === 'running') step.status = 'failed';
       for (const attempt of current.attempts) if (attempt.status === 'running') {
@@ -249,10 +260,11 @@ async function exportEvidence(store: TaskStore, owner: string, task: TaskRecord)
       dependencies: task.environment?.dependencies.length ? task.environment.dependencies.map(item => `${item.name}: ${item.kind}, health verified=${item.verified}`).join('; ') : 'No disposable services provisioned.',
       resources: [...(task.prepared ? [task.workspacePath] : []), ...(task.environment?.resources.map(item => `${item.kind}:${item.name}:${item.status}`) ?? [])],
       execution: task.environment?.config.mode ?? 'host', recoveries: task.environment?.recoveries, cleanupErrors: task.environment?.cleanupErrors,
+      diagnostic: task.environment?.dockerDiagnostic ? { kind: task.environment.dockerDiagnostic.kind, recommendation: task.environment.dockerDiagnostic.recommendation, artifact: task.environment.dockerDiagnosticArtifact } : undefined,
     },
     limitations: ['Milestone 3: no security scanners or production/external integration verification.', task.environment?.config.mode === 'docker' ? 'Configured verification backend: resource-limited Docker. The Codex worker uses its SDK workspace sandbox; check results show what actually ran.' : 'Explicit host mode: verification commands run locally. No Docker isolation was used.', 'Acceptance criteria guide execution; automated completion gates are the configured build and test commands.', ...(task.environment?.limitations ?? []), ...(task.environment?.cleanupErrors.map(error => `Resource cleanup incomplete: ${error}`) ?? []), ...(diffError ? [`Diff capture failed: ${diffError}`] : [])],
     usage: { elapsedMs: task.elapsedMs, agentTurns: task.attempts.length, retries: task.maxRepairAttempts - task.remainingRepairAttempts, tokens }, sessionId: last?.sessionId,
-    nextActions: task.status === 'completed' && !diffError ? [] : ['Inspect the event journal, retained workspace, sessions, and verification evidence. Ambiguous interrupted actions require manual reconciliation; start a new task only after inspecting their effects.'],
+    nextActions: task.status === 'completed' && !diffError ? [] : task.environment?.dockerDiagnostic ? [task.environment.dockerDiagnostic.recommendation] : ['Inspect the event journal, retained workspace, sessions, and verification evidence. Ambiguous interrupted actions require manual reconciliation; start a new task only after inspecting their effects.'],
   };
   await mkdir(task.directory, { recursive: true });
   const files: Record<string, string> = {

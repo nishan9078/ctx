@@ -1,4 +1,5 @@
 import type { ProcessResult } from './process-manager.js';
+import type { DockerAccessDiagnostic } from './docker-diagnostics.js';
 export interface MockRoute { method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'; path: string; status: number; body: unknown }
 export interface MockSpec { urlVariable: string; keyVariable?: string; routes: MockRoute[] }
 export interface EnvironmentOptions {
@@ -17,6 +18,7 @@ export interface EnvironmentState {
   resources: ManagedResource[]; recoveries: RecoveryAttempt[]; remainingRecoveryAttempts: number;
   verificationRound: number; activeRecovery?: number; dependencies: { name: string; kind: 'real' | 'mock'; verified: boolean }[];
   limitations: string[]; cleanupErrors: string[];
+  dockerDiagnostic?: DockerAccessDiagnostic; dockerDiagnosticArtifact?: string;
 }
 export interface CommandRunner { run(command: string, signal?: AbortSignal, timeoutMs?: number): Promise<ProcessResult> }
 export interface DockerDriver { readonly kind: 'live' | 'simulated'; command(args: string[], signal?: AbortSignal, timeoutMs?: number): Promise<ProcessResult> }

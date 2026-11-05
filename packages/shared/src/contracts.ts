@@ -15,7 +15,7 @@ export interface Report {
   implemented: { summary: string; diff: string; hasChanges: boolean };
   verification: CheckResult[];
   security: { status: 'unavailable'; coverage: string[] };
-  environment: { dependencies: string; resources: string[]; execution?: 'docker' | 'host'; recoveries?: { kind: string; status: string; artifact: string }[]; cleanupErrors?: string[] };
+  environment: { dependencies: string; resources: string[]; execution?: 'docker' | 'host'; recoveries?: { kind: string; status: string; artifact: string }[]; cleanupErrors?: string[]; diagnostic?: { kind: string; recommendation: string; artifact?: string } };
   limitations: string[];
   usage: { elapsedMs: number; agentTurns: number; retries: number; tokens?: Record<string, number> };
   sessionId?: string;

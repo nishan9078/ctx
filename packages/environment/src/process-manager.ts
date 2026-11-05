@@ -1,11 +1,13 @@
 import { spawn } from 'node:child_process';
 export interface ProcessResult { code: number | null; output: string; timedOut: boolean; truncated: boolean }
 export async function runProcess(command: string, args: string[], cwd: string, options: {
-  signal?: AbortSignal; timeoutMs?: number; onOutput?: (text: string) => void;
+  signal?: AbortSignal; timeoutMs?: number; onOutput?: (text: string) => void; env?: NodeJS.ProcessEnv;
 } = {}): Promise<ProcessResult> {
   if (options.signal?.aborted) throw new Error('Operation cancelled');
   return new Promise((resolve, reject) => {
-    const env = { ...process.env };
+    // Never set uid/gid or reset supplementary groups here. Child processes must
+    // retain the orchestrator's existing authority, including sandbox restrictions.
+    const env = { ...(options.env ?? process.env) };
     delete env.NODE_TEST_CONTEXT;
     const child = spawn(command, args, { cwd, env, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
     let output = ''; let timedOut = false; let truncated = false; let killTimer: NodeJS.Timeout | undefined;

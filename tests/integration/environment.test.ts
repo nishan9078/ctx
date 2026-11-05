@@ -5,6 +5,8 @@ import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { runTask, databasePath } from '../../packages/core/src/orchestrator.js';
+import { LocalDockerDriver } from '../../packages/environment/src/docker.js';
+import { DockerAccessError, classifyDockerAccess } from '../../packages/environment/src/docker-diagnostics.js';
 import { TaskStore } from '../../packages/persistence/src/database.js';
 import { FakeDocker } from '../fixtures/fake-docker.js';
 import { prepareWorkspace } from '../../packages/environment/src/workspace.js';
@@ -153,5 +155,96 @@ test('environment budgets cannot be reset or changed without a persisted recover
       assert.throws(() => store.update(result.report.id, owner, 'invalid', {}, task => { task.environment!.config.allowImagePull = true; }), /immutable/);
       assert.equal(store.events(result.report.id).length, before);
     } finally { store.release(result.report.id, owner); store.close(); }
+  } finally { await clean(root, workspace); }
+});
+for (const allowImagePull of [false, true]) test(`missing images respect explicit pull permission: ${allowImagePull}`, async () => {
+  const root = await temporary(); const docker = new FakeDocker(); docker.imagesAvailable = false; docker.failures = [];
+  let workspace: string | undefined; let calls = 0;
+  try {
+    const result = await runTask({ request: 'feature', repositoryPath: fixture, outputDirectory: root, environment: { allowImagePull } }, { async execute() { calls++; return { outcome: 'completed', summary: 'done' }; } }, { docker });
+    workspace = result.report.workspacePath;
+    assert.equal(result.report.outcome, allowImagePull ? 'completed' : 'blocked');
+    assert.equal(calls, allowImagePull ? 1 : 0);
+    const pullIndex = docker.calls.findIndex(args => args[0] === 'pull');
+    const networkIndex = docker.calls.findIndex(args => args[0] === 'network' && args[1] === 'create');
+    if (allowImagePull) { assert.ok(pullIndex >= 0 && pullIndex < networkIndex); assert.ok(docker.calls.slice(pullIndex + 1, networkIndex).some(args => args[0] === 'image' && args[1] === 'inspect')); }
+    else assert.equal(pullIndex, -1);
+    assert.equal(docker.resources.size, 0);
+  } finally { await clean(root, workspace); }
+});
+test('image inspection infrastructure failures never trigger a pull or coding attempt', async () => {
+  const root = await temporary(); let workspace: string | undefined;
+  class FailedInspection extends FakeDocker {
+    override async command(args: string[]) {
+      if (args[0] === 'image') { this.calls.push(args); return { code: 1, output: 'Docker daemon connection failed', timedOut: false, truncated: false }; }
+      return super.command(args);
+    }
+  }
+  const docker = new FailedInspection();
+  try {
+    const result = await runTask({ request: 'feature', repositoryPath: fixture, outputDirectory: root, environment: { allowImagePull: true } }, { async execute() { throw new Error('Must not spend a coding turn'); } }, { docker });
+    workspace = result.report.workspacePath; assert.equal(result.report.outcome, 'blocked');
+    assert.match(result.report.implemented.summary, /Cannot inspect Docker image/);
+    assert.ok(!docker.calls.some(args => args[0] === 'pull' || args[0] === 'run'));
+  } finally { await clean(root, workspace); }
+});
+test('socket failures retain process diagnostics and do not retry with elevated permissions', async () => {
+  const root = await temporary(); let workspace: string | undefined; let calls = 0;
+  const docker = new LocalDockerDriver(async command => {
+    assert.equal(command, 'docker'); calls++;
+    return { code: 1, output: 'permission denied while trying to connect to the docker API at unix:///var/run/docker.sock', timedOut: false, truncated: false };
+  });
+  try {
+    const result = await runTask({ request: 'feature', repositoryPath: fixture, outputDirectory: root }, { async execute() { throw new Error('Must not spend a coding turn'); } }, { docker });
+    workspace = result.report.workspacePath; assert.equal(result.report.outcome, 'blocked'); assert.equal(calls, 1);
+    const diagnostic = JSON.parse(await readFile(result.report.environment.diagnostic!.artifact!, 'utf8'));
+    assert.equal(diagnostic.facts.uid, process.getuid?.());
+    assert.deepEqual(diagnostic.facts.groups, process.getgroups?.());
+    assert.equal(result.report.nextActions[0], diagnostic.recommendation);
+    const store = new TaskStore(databasePath(root));
+    try { assert.ok(store.events(result.report.id).some(event => event.type === 'environment.docker.blocked')); } finally { store.close(); }
+  } finally { await clean(root, workspace); }
+});
+for (const failure of ['permission', 'container-start'] as const) test(`control-plane failure during verification blocks without model repair: ${failure}`, async () => {
+  const root = await temporary(); let workspace: string | undefined; let turns = 0;
+  class FailedRun extends FakeDocker {
+    override async command(args: string[]) {
+      if (args[0] === 'run') {
+        this.calls.push(args);
+        if (failure === 'permission') throw new DockerAccessError('Docker socket denied', classifyDockerAccess({ uid: 1000, gid: 1000, groups: [1000] }, 'run'));
+        return { code: 125, output: 'Docker failed to mount the workspace', timedOut: false, truncated: false };
+      }
+      return super.command(args);
+    }
+  }
+  const docker = new FailedRun();
+  try {
+    const result = await runTask({ request: 'feature', repositoryPath: fixture, outputDirectory: root, maxRepairAttempts: 2 }, { async execute() { turns++; return { outcome: 'completed', summary: 'done' }; } }, { docker });
+    workspace = result.report.workspacePath; assert.equal(result.report.outcome, 'blocked'); assert.equal(turns, 1); assert.equal(result.report.usage.retries, 0);
+    assert.equal(result.report.verification.length, 1); assert.equal(result.report.verification[0].status, 'unavailable');
+    assert.match(await readFile(result.report.verification[0].artifact, 'utf8'), failure === 'permission' ? /socket denied/ : /failed to mount/);
+    assert.equal(docker.resources.size, 0);
+    if (failure === 'permission') assert.ok(result.report.environment.diagnostic);
+  } finally { await clean(root, workspace); }
+});
+test('permission failure provisioning PostgreSQL retains recovery evidence and the original access diagnostic', async () => {
+  const root = await temporary(); let workspace: string | undefined;
+  class PostgresAccessFailure extends FakeDocker {
+    override async command(args: string[]) {
+      if (args[0] === 'run' && args.includes('harness.purpose=postgres')) {
+        this.calls.push(args);
+        throw new DockerAccessError('Docker access denied provisioning PostgreSQL', classifyDockerAccess({ uid: 1000, gid: 1000, groups: [1000] }, 'run'));
+      }
+      return super.command(args);
+    }
+  }
+  const docker = new PostgresAccessFailure();
+  try {
+    const result = await runTask({ request: 'feature', repositoryPath: fixture, outputDirectory: root, maxRepairAttempts: 2, environment: { services: { postgres: true } } }, { async execute() { return { outcome: 'completed', summary: 'done' }; } }, { docker });
+    workspace = result.report.workspacePath;
+    assert.equal(result.report.outcome, 'blocked'); assert.equal(result.report.usage.retries, 0);
+    assert.equal(result.report.environment.recoveries?.[0].status, 'failed'); assert.ok(result.report.environment.diagnostic);
+    assert.match(await readFile(result.report.environment.recoveries![0].artifact, 'utf8'), /Docker access denied provisioning PostgreSQL/);
+    assert.equal(docker.resources.size, 0);
   } finally { await clean(root, workspace); }
 });

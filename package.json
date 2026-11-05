@@ -8,6 +8,7 @@
     "node": ">=22.13"
   },
   "bin": {
+    "ctx": "dist/apps/cli/src/index.js",
     "harness": "dist/apps/cli/src/index.js"
   },
   "scripts": {
@@ -15,10 +16,14 @@
     "typecheck": "tsc --noEmit",
     "test": "pnpm build && node --test dist/tests/unit/*.test.js dist/tests/integration/*.test.js",
     "harness": "tsx apps/cli/src/index.ts",
+    "ctx": "pnpm build && node --disable-warning=ExperimentalWarning dist/apps/cli/src/index.js",
+    "release": "pnpm build && node scripts/package-release.mjs",
     "test:live": "pnpm build && HARNESS_LIVE=1 node --test dist/tests/integration/live.test.js",
-    "test:docker": "pnpm build && HARNESS_DOCKER=1 node --test dist/tests/integration/docker-live.test.js"
+    "test:docker": "pnpm build && HARNESS_DOCKER=1 node --test dist/tests/integration/docker-live.test.js",
+    "release:check": "node scripts/verify-release.mjs"
   },
   "dependencies": {
+    "@openai/codex-security": "0.8.3",
     "@openai/codex-sdk": "0.166.0"
   },
   "devDependencies": {

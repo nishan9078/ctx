@@ -42,10 +42,19 @@ export class EnvironmentManager implements CommandRunner {
     if (this.state.config.mode === 'host') { this.update('ready', { mode: 'host' }, state => { state.ready = true; }); return; }
     if (this.driver.kind === 'simulated' && !this.state.limitations.some(item => item.includes('simulated'))) this.update('adapter.simulated', {}, state => { state.limitations.push('Docker driver is simulated; no live Docker or PostgreSQL integration was verified.'); });
     await this.command(['info', '--format', '{{.ServerVersion}}'], signal);
-    // No implicit image pulls: a missing image is an explicit, reportable prerequisite.
+    // Provision before spending a model turn. Image/cache failures must not be
+    // confused with a denied socket or deferred to a workload's docker run.
     for (const image of new Set([this.state.config.image, ...(this.state.config.services.postgres ? ['postgres:16-bookworm'] : [])])) {
       const found = await this.driver.command(['image', 'inspect', image], signal);
-      if (found.code !== 0 && !this.state.config.allowImagePull) throw new EnvironmentUnavailable(`Docker image ${image} unavailable. Preload it or explicitly enable image pulls. ${found.output}`);
+      if (found.code === 0 && !found.timedOut) continue;
+      if (found.timedOut || !/No such image|image[^\n]*not found/i.test(found.output)) throw new EnvironmentUnavailable(`Cannot inspect Docker image ${image}: ${redact(found.output)}`);
+      if (!this.state.config.allowImagePull) throw new EnvironmentUnavailable(`Docker image ${image} unavailable. Preload it or explicitly enable image pulls. ${redact(found.output)}`);
+      this.update('image.pull.intent', { image }, () => {});
+      const pulled = await this.driver.command(['pull', image], signal, 120_000);
+      if (pulled.code !== 0 || pulled.timedOut) throw new EnvironmentUnavailable(`Docker image ${image} provisioning failed: ${redact(pulled.output)}`);
+      const verified = await this.driver.command(['image', 'inspect', image], signal);
+      if (verified.code !== 0 || verified.timedOut) throw new EnvironmentUnavailable(`Docker image ${image} unavailable after pull: ${redact(verified.output)}`);
+      this.update('image.ready', { image }, () => {});
     }
     const network = this.resource(this.state.network, 'network', 'sandbox');
     if (!await inspectOwned(this.driver, this.taskId, network, signal)) await this.command(['network', 'create', '--internal', '--label', `harness.task=${this.taskId}`, '--label', 'harness.purpose=sandbox', network.name], signal);
@@ -67,7 +76,11 @@ export class EnvironmentManager implements CommandRunner {
     const resource = this.resource(name, 'container', purpose);
     const git = await worktreeMetadata(this.workspace);
     const args = sandboxArgs(this.state.config, this.workspace, this.state.network, name, this.taskId, purpose, this.state.variables, git, purpose === 'install');
-    try { return await this.driver.command([...args, this.state.config.image, '/bin/sh', '-c', command], signal, timeoutMs); }
+    try {
+      const result = await this.driver.command([...args, this.state.config.image, '/bin/sh', '-c', command], signal, timeoutMs);
+      if (result.code === 125) throw new EnvironmentUnavailable(`Docker could not start the ${purpose} sandbox: ${redact(result.output)}`);
+      return result;
+    }
     finally { await this.remove(resource); }
   }
   private async health(resource: ManagedResource, signal?: AbortSignal): Promise<void> {
@@ -129,7 +142,7 @@ export class EnvironmentManager implements CommandRunner {
     const id = this.state.recoveries.length + 1; const artifact = join(this.directory, 'environment', `recovery-${id}.log`);
     const attempt: RecoveryAttempt = { id, kind: failure.kind, status: 'running', reason: redact(failure.reason), artifact };
     this.update('recovery.intent', attempt, state => { state.remainingRecoveryAttempts--; state.activeRecovery = id; state.recoveries.push(attempt); });
-    let log = `${failure.kind}\n${redact(failure.reason)}\n`; let passed = false;
+    let log = `${failure.kind}\n${redact(failure.reason)}\n`; let passed = false; let infrastructureError: EnvironmentUnavailable | undefined;
     try {
       if (failure.kind === 'postgres-unavailable') await this.startService('postgres', signal);
       else if (failure.kind === 'missing-api-key' || failure.kind === 'mock-unavailable') {
@@ -148,12 +161,15 @@ export class EnvironmentManager implements CommandRunner {
         if (result.code !== 0 || result.timedOut) throw new EnvironmentUnavailable('Frozen dependency installation failed');
       }
       passed = true; log += '\nRecovery action passed; rerunning required build and tests to verify application behavior.\n';
-    } catch (error) { log += `\n${redact(String(error))}\n`; }
+    } catch (error) { log += `\n${redact(String(error))}\n`; if (error instanceof EnvironmentUnavailable) infrastructureError = error; }
     await mkdir(dirname(artifact), { recursive: true }); await writeFile(artifact, redact(log));
     this.update('recovery.result', { id, passed, artifact }, state => {
       state.recoveries.find(item => item.id === id)!.status = passed ? 'passed' : 'failed'; delete state.activeRecovery;
       if (!passed) state.limitations.push(`Recovery ${failure.kind} failed; inspect ${artifact}`);
     });
+    // Retain the failed recovery attempt, then propagate control-plane diagnostics
+    // (including failures provisioning PostgreSQL), rather than masking them.
+    if (infrastructureError) throw infrastructureError;
     return passed ? 'recovered' : 'blocked';
   }
   async cleanup(): Promise<void> {

@@ -1,4 +1,5 @@
 import type { CommandRunner } from '../../environment/src/types.js';
+import { EnvironmentUnavailable } from '../../environment/src/types.js';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { CheckResult } from '../../shared/src/contracts.js';
@@ -25,14 +26,17 @@ export async function verify(workspace: string, artifacts: string, commands: { b
       const check: CheckResult = { name, command: '', status: 'unavailable', exitCode: null, durationMs: 0, artifact };
       checks.push(check); hooks?.after?.(check); continue;
     }
-    let output = ''; let exitCode: number | null = null; let passed = false;
+    let output = ''; let exitCode: number | null = null; let passed = false; let infrastructureError: EnvironmentUnavailable | undefined;
     try {
       const result = runner ? await runner.run(command, signal, timeoutMs) : await runProcess('/bin/sh', ['-c', command], workspace, { signal, timeoutMs });
       output = result.output + (result.timedOut ? '\nCheck timed out.\n' : ''); exitCode = result.code; passed = result.code === 0 && !result.timedOut;
-    } catch (error) { output = String(error); }
+    } catch (error) { output = String(error); if (error instanceof EnvironmentUnavailable) infrastructureError = error; }
     await writeFile(artifact, redact(output));
-    const check: CheckResult = { name, command, status: signal?.aborted ? 'cancelled' : passed ? 'passed' : 'failed', exitCode, durationMs: Date.now() - started, artifact };
+    const check: CheckResult = { name, command, status: signal?.aborted ? 'cancelled' : infrastructureError ? 'unavailable' : passed ? 'passed' : 'failed', exitCode, durationMs: Date.now() - started, artifact };
     checks.push(check); hooks?.after?.(check);
+    // A broken control plane is not an application failure for the coding agent
+    // to repair, nor permission to retry from a different execution context.
+    if (infrastructureError) throw infrastructureError;
   }
   return checks;
 }

@@ -1,11 +1,27 @@
 import { runProcess } from './process-manager.js';
 import type { DockerDriver, EnvironmentConfig, ManagedResource } from './types.js';
 import { EnvironmentUnavailable } from './types.js';
+import { diagnoseDockerAccess, DockerAccessError, isDockerAccessDenied } from './docker-diagnostics.js';
+import { redact } from '../../shared/src/redact.js';
 export class LocalDockerDriver implements DockerDriver {
   readonly kind = 'live' as const;
+  private readonly environment: NodeJS.ProcessEnv;
+  constructor(private readonly execute: typeof runProcess = runProcess, environment: NodeJS.ProcessEnv = process.env) {
+    // Keep the chosen daemon, credentials selectors and proxy environment stable
+    // across preflight, provisioning, checks and cleanup. Do not drop identity.
+    this.environment = { ...environment };
+  }
   async command(args: string[], signal?: AbortSignal, timeoutMs?: number) {
-    try { return await runProcess('docker', args, process.cwd(), { signal, timeoutMs: timeoutMs ?? 30_000 }); }
-    catch (error) { throw new EnvironmentUnavailable(`Docker unavailable: ${String(error)}`); }
+    try {
+      const result = await this.execute('docker', args, process.cwd(), { signal, timeoutMs: timeoutMs ?? 30_000, env: this.environment });
+      if (result.code !== 0 && isDockerAccessDenied(result.output)) {
+        throw new DockerAccessError(`Docker access failed: ${redact(result.output)}`, await diagnoseDockerAccess(result.output, args[0] ?? 'unknown'));
+      }
+      return result;
+    } catch (error) {
+      if (error instanceof EnvironmentUnavailable) throw error;
+      throw new EnvironmentUnavailable(`Docker unavailable: ${redact(String(error))}`);
+    }
   }
 }
 export interface DockerObject {

@@ -12,7 +12,8 @@ export class FakeDocker implements DockerDriver {
     const value = (key: string) => args[args.indexOf(key) + 1];
     if (!this.available) return result(1, 'permission denied on Docker socket');
     if (args[0] === 'info') return result(0, '29.0');
-    if (args[0] === 'image') return result(this.imagesAvailable ? 0 : 1, 'image inspection');
+    if (args[0] === 'image') return result(this.imagesAvailable ? 0 : 1, this.imagesAvailable ? 'image inspection' : `No such image: ${args[2]}`);
+    if (args[0] === 'pull') { this.imagesAvailable = true; return result(0, 'image pulled'); }
     if (args[1] === 'inspect') {
       const resource = this.resources.get(args[2]);
       if (!resource) return result(1, `No such ${args[0]}: ${args[2]}`);

@@ -2,7 +2,7 @@
 
 Milestones 1–3 implement request → validated plan → sequential Codex execution → build/tests → bounded repair → evidence report, with SQLite state, a transactional event journal, leases, checkpoints, Git worktrees, sandboxed Docker verification, and deterministic environment recovery. The orchestrator owns completion; an agent summary alone cannot pass a task.
 
-Requires Node.js 22.13+, pnpm 12, Git, a reachable local Docker daemon with cached runtime/service images, and configured Codex authentication. The SDK is pinned to `@openai/codex-sdk@0.166.0`; its bundled CLI uses your existing Codex login or `CODEX_API_KEY`. See the [official SDK documentation](https://developers.openai.com/codex/sdk/). Persistence uses Node's built-in [SQLite module](https://nodejs.org/download/release/latest-jod/docs/api/sqlite.html), which emits an experimental-feature warning on Node 22.
+Building from source requires Node.js 22.13+, pnpm 12, Git, a reachable local Docker daemon with cached runtime/service images, and configured Codex authentication. The SDK is pinned to `@openai/codex-sdk@0.166.0`; its bundled CLI uses your existing Codex login or `CODEX_API_KEY`. See the [official SDK documentation](https://developers.openai.com/codex/sdk/). Persistence uses Node's built-in [SQLite module](https://nodejs.org/download/release/latest-jod/docs/api/sqlite.html), which emits an experimental-feature warning on Node 22.
 
 ```sh
 pnpm install
@@ -10,6 +10,42 @@ pnpm build
 pnpm test
 pnpm harness run "Add a farewell function and tests" --repo tests/fixtures/feature --allow-image-pull
 ```
+
+## Download and open CTX
+
+The release build produces `releases/ctx-linux-x64.tar.gz` and its `.sha256` file. The Linux x64 bundle includes its own Node.js runtime and production engine packages, so the destination machine does not need Node.js, pnpm, or a separate engine installation. It still needs Git, compatible glibc/libstdc++, Docker access for application checks, provider authentication, and Python 3.10+ for security scans (`tomli` is needed on Python 3.10).
+
+```sh
+sha256sum -c ctx-linux-x64.tar.gz.sha256
+tar -xzf ctx-linux-x64.tar.gz
+cd ctx-linux-x64
+./ctx
+```
+
+To install the `ctx` command for your account:
+
+```sh
+./install.sh
+export PATH="$HOME/.local/bin:$PATH"
+cd /path/to/your/project
+ctx
+```
+
+The installer writes only under `~/.local` by default and refuses to overwrite an existing installation. `./install.sh /other/prefix` selects another destination. It does not change shell profiles, Docker permissions, or authentication. Extracting and running `./ctx` also works without installing anything.
+
+CTX opens its own terminal interface. Describe a request to start work. `/repo` chooses a project; `/tasks`, `/status`, `/diff`, `/resume`, `/cancel`, and `/details` inspect and control work. `/set pull on` explicitly permits image downloads, and `/set install on` explicitly permits frozen dependency installation. `/set execution host` selects trusted host checks. Regular progress uses CTX stages and results; engine-specific evidence is available through `/details`. Authentication remains the connected provider's own sign-in flow (`ctx login` or `/login`). `ctx doctor` checks local prerequisites without running a model scan.
+
+`/security` uses the security SDK underneath CTX. It reviews the last task's staged/unstaged changes in its private worktree, or the selected repository when there is no last task. Scans are explicit and separate from the coding task's completion/report status; this is not yet the Milestone 4 automatic security gate. They run in a subprocess with unrelated environment credentials removed and a requested read-only agent sandbox. Security output is saved privately outside the repository. The estimated scan budget is $1 (not a billing cap), with a five-minute worker timeout. SDK availability and input preflight do not establish account entitlement or completed coverage; unavailable, failed, and interrupted scans never become a security pass.
+
+For development and rebuilding the downloadable bundle:
+
+```sh
+pnpm install
+pnpm ctx                 # build and open the interface
+pnpm release             # build a bundle for the current Linux x64/arm64 host
+```
+
+The release builder downloads a pinned official Node.js archive, checks its SHA-256 against the official manifest, copies only production dependencies, verifies portable package links, and writes a release checksum. Credentials, task databases, and workspace artifacts are excluded. Only the Linux x64 release has been built and tested here; other platforms require their own validated builds.
 
 For another stack, provide both verification commands:
 
@@ -119,7 +155,7 @@ Recovery intent, consumed budget, resource names, health results, and evidence l
 
 ## Remaining limits
 
-Security scanners, production verification, deployments, approvals, and automated worktree deletion remain deferred. Security is always reported as unavailable. Known credential environment values and OpenAI key patterns are redacted from logs and prompts as best-effort hygiene; diffs still require review before sharing. Diffs over 1,000,000 characters fail evidence capture explicitly. Worktrees and frozen dependencies consume host disk space; the Docker memory limit does not provide a quota for the writable workspace. See [operations](docs/OPERATIONS.md) for prerequisites and acceptance testing.
+Automatic security gates, production verification, deployments, approvals, and automated worktree deletion remain deferred. Coding task reports still mark security unavailable; explicit CTX security scans have their own result and evidence. Known credential environment values and OpenAI key patterns are redacted from logs and prompts as best-effort hygiene; diffs still require review before sharing. Diffs over 1,000,000 characters fail evidence capture explicitly. Worktrees and frozen dependencies consume host disk space; the Docker memory limit does not provide a quota for the writable workspace. See [operations](docs/OPERATIONS.md) for prerequisites and acceptance testing.
 
 After `pnpm build`, use `node dist/apps/cli/src/index.js` directly if desired. Exit codes: 0 completed, 1 failed/blocked/invalid input, 130 cancelled. `approve`, background `cancel`, `security`, and log following remain deferred. Unsupported commands/options fail explicitly.
 
