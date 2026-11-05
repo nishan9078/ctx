@@ -1,0 +1,1 @@
+{"name":"postgres-recovery-fixture","private":true,"type":"module","scripts":{"build":"node --check postgres-client.js && node --check index.test.js","test":"node --test index.test.js"}}

@@ -1,27 +1,45 @@
-import { cp, mkdir, readdir, lstat, realpath } from 'node:fs/promises';
-import { join, resolve, relative, isAbsolute } from 'node:path';
+import { cp, mkdir, readdir, lstat, realpath, access } from 'node:fs/promises';
+import { join, resolve, relative, isAbsolute, sep } from 'node:path';
+import { addWorktree } from './git-worktree.js';
 import { runProcess } from './process-manager.js';
 export async function prepareWorkspace(repositoryPath: string, destination: string): Promise<string> {
   const source = await realpath(repositoryPath);
   const target = resolve(destination);
   const rel = relative(source, target);
-  if (!rel || (!rel.startsWith('..') && !isAbsolute(rel))) throw new Error('Workspace must be outside source repository');
-  await mkdir(target, { recursive: false });
+  if (!rel || (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))) throw new Error('Workspace must be outside source repository');
+  const snapshot = join(target, '..', 'snapshot');
+  await mkdir(snapshot, { recursive: false });
   const excluded = new Set(['.git', 'node_modules', '.harness']);
   async function copyDirectory(from: string, to: string) {
     for (const entry of await readdir(from, { withFileTypes: true })) {
       if (excluded.has(entry.name)) continue;
       const input = join(from, entry.name); const output = join(to, entry.name);
-      if ((await lstat(input)).isSymbolicLink()) throw new Error(`Symlinks are not supported in Milestone 1: ${input}`);
-      if (entry.isDirectory()) { await mkdir(output); await copyDirectory(input, output); }
+      if ((await lstat(input)).isSymbolicLink()) throw new Error(`Symlinks are not supported: ${input}`);
+      if (entry.isDirectory()) { await mkdir(output, { recursive: true }); await copyDirectory(input, output); }
       else if (entry.isFile()) await cp(input, output);
     }
   }
-  await copyDirectory(source, target);
-  for (const args of [ ['init', '-q'], ['add', '-A'], ['-c', 'user.name=Harness', '-c', 'user.email=harness@localhost', '-c', 'commit.gpgsign=false', 'commit', '--allow-empty', '-qm', 'Harness baseline'] ]) {
-    const result = await runProcess('git', args, target);
+  await copyDirectory(source, snapshot);
+  const git = async (args: string[]) => {
+    const result = await runProcess('git', args, snapshot);
     if (result.code !== 0) throw new Error(`Workspace initialization failed: ${result.output}`);
+  };
+  await git(['init', '-q']); await git(['add', '-A']);
+  // A tracked file may now match .gitignore; retain that tracked status in the private baseline.
+  const original = await runProcess('git', ['ls-files', '-z', '--cached'], source);
+  if (original.code === 0) {
+    if (original.truncated) throw new Error('Source file list exceeds the safe snapshot limit');
+    const tracked: string[] = [];
+    for (const path of original.output.split('\0').filter(Boolean)) {
+      if (path.split('/').some(part => excluded.has(part))) continue;
+      try { await access(join(snapshot, path)); tracked.push(path); } catch { /* Preserve source deletions. */ }
+    }
+    for (let offset = 0; offset < tracked.length; offset += 100) await git(['add', '-f', '--', ...tracked.slice(offset, offset + 100)]);
   }
+  await git(['-c', 'user.name=Harness', '-c', 'user.email=harness@localhost', '-c', 'commit.gpgsign=false', 'commit', '--allow-empty', '-qm', 'Harness baseline']);
+  await addWorktree(snapshot, target);
+  // Preserve ignored development files (for example .env) without tracking them.
+  await copyDirectory(snapshot, target);
   return target;
 }
 export async function captureDiff(workspacePath: string): Promise<string> {

@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { runTask } from '../../packages/core/src/orchestrator.js';
 import { CodexSdkAdapter } from '../../packages/agents/src/codex-sdk.adapter.js';
 test('LIVE: Codex implements a fixture feature and harness captures diff plus test results', { skip: process.env.HARNESS_LIVE !== '1', timeout: 240_000 }, async () => {
-  const { report, directory } = await runTask({
+  const { report, directory } = await runTask({ environment: { mode: 'host' },
     request: 'Add export function farewell(name) returning `Goodbye, ${name}!` to index.js. Add a test for farewell to index.test.js. Keep greet working.',
     repositoryPath: resolve('tests/fixtures/feature'), outputDirectory: resolve('.harness/live'), timeoutMs: 180_000,
   }, new CodexSdkAdapter());

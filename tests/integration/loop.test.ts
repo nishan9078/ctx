@@ -19,7 +19,7 @@ test('fixture feature produces real diff, passing checks and persisted evidence 
   const before = await readFile(join(fixture, 'index.js'), 'utf8');
   let workspace: string | undefined;
   try {
-    const { report, directory } = await runTask({ request: 'Add version and feature', repositoryPath: fixture, outputDirectory: output }, featureAgent);
+    const { report, directory } = await runTask({ environment: { mode: 'host' }, request: 'Add version and feature', repositoryPath: fixture, outputDirectory: output }, featureAgent);
     workspace = report.workspacePath;
     assert.equal(report.outcome, 'completed'); assert.equal(report.verification.length, 2);
     assert.ok(report.verification.every(check => check.status === 'passed'));
@@ -39,7 +39,7 @@ for (const scenario of ['failed-test', 'missing-check', 'agent-failed', 'cancell
   const output = await mkdtemp(join(tmpdir(), 'harness-failure-'));
   let workspace: string | undefined;
   try {
-    const { report } = await runTask({ request: 'feature', repositoryPath: fixture, outputDirectory: output,
+    const { report } = await runTask({ environment: { mode: 'host' }, request: 'feature', repositoryPath: fixture, outputDirectory: output,
       test: scenario === 'failed-test' ? 'exit 7' : scenario === 'missing-check' ? '' : undefined,
       signal: scenario === 'cancelled' ? AbortSignal.abort() : undefined,
     }, scenario === 'agent-failed' ? { async execute() { return { outcome: 'failed', summary: 'Auth missing' }; } } : featureAgent);

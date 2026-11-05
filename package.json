@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@12.16.1",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13"
   },
   "bin": {
     "harness": "dist/apps/cli/src/index.js"
@@ -13,9 +13,10 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/unit/*.test.ts tests/integration/*.test.ts",
+    "test": "pnpm build && node --test dist/tests/unit/*.test.js dist/tests/integration/*.test.js",
     "harness": "tsx apps/cli/src/index.ts",
-    "test:live": "HARNESS_LIVE=1 tsx --test tests/integration/live.test.ts"
+    "test:live": "pnpm build && HARNESS_LIVE=1 node --test dist/tests/integration/live.test.js",
+    "test:docker": "pnpm build && HARNESS_DOCKER=1 node --test dist/tests/integration/docker-live.test.js"
   },
   "dependencies": {
     "@openai/codex-sdk": "0.166.0"

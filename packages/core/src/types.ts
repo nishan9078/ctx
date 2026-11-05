@@ -1,0 +1,23 @@
+import type { EnvironmentState } from '../../environment/src/types.js';
+import type { AgentResult } from '../../agents/src/agent-adapter.js';
+import type { Report, CheckResult } from '../../shared/src/contracts.js';
+export type TaskStatus = 'queued' | 'planning' | 'preparing' | 'executing' | 'verifying' | 'repairing' | 'awaiting_approval' | 'blocked' | 'completed' | 'failed' | 'cancelled';
+export type StepStatus = 'pending' | 'running' | 'passed' | 'failed' | 'blocked';
+export interface PlanStep {
+  id: string; title: string; instructions: string; dependencies: string[];
+  acceptanceCriteria: string[]; status: StepStatus;
+}
+export interface Plan { version: number; steps: PlanStep[] }
+export interface Attempt {
+  id: string; stepId: string; idempotencyKey: string; status: 'running' | 'completed' | 'failed' | 'interrupted';
+  sessionId?: string; summary?: string; usage?: Record<string, number>; result?: AgentResult; startedAt: string; finishedAt?: string;
+}
+export interface TaskRecord {
+  id: string; request: string; repositoryPath: string; directory: string; workspacePath: string;
+  status: TaskStatus; createdAt: string; updatedAt: string;
+  plan: Plan; commands: { build?: string; test?: string }; prepared: boolean;
+  maxRepairAttempts: number; remainingRepairAttempts: number;
+  attempts: Attempt[]; verification: CheckResult[]; activeCheck?: string;
+  environment?: EnvironmentState;
+  timeoutMs: number; elapsedMs: number; model?: string; error?: string; report?: Report;
+}

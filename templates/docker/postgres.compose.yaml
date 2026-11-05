@@ -1,0 +1,32 @@
+# Reference template for the equivalent service provisioned by EnvironmentManager.
+# Local disposable development data only; no host ports or persistent volumes.
+services:
+  postgres:
+    image: postgres:16-bookworm
+    pull_policy: never
+    user: postgres
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    cpus: 1
+    pids_limit: 128
+    environment:
+      POSTGRES_USER: harness
+      POSTGRES_DB: harness
+      POSTGRES_PASSWORD: local-disposable
+      POSTGRES_HOST_AUTH_METHOD: trust
+      PGDATA: /var/lib/postgresql/data/pgdata
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=64m,mode=1777
+      - /var/lib/postgresql/data:rw,nosuid,nodev,size=256m,mode=1777
+      - /var/run/postgresql:rw,nosuid,nodev,size=16m,mode=1777
+    networks: [sandbox]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U harness -d harness && psql -h 127.0.0.1 -U harness -d harness -tAc "SELECT 1"']
+      interval: 1s
+      timeout: 5s
+      retries: 30
+networks:
+  sandbox:
+    internal: true
