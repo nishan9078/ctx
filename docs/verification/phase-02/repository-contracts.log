@@ -1,0 +1,96 @@
+TAP version 13
+# (node:50217) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: project registration canonicalizes directories, is idempotent and never overwrites path/policy identity
+ok 1 - project registration canonicalizes directories, is idempotent and never overwrites path/policy identity
+  ---
+  duration_ms: 28.218057
+  type: 'test'
+  ...
+# Subtest: invalid registration is rejected without an event or implicit project creation
+ok 2 - invalid registration is rejected without an event or implicit project creation
+  ---
+  duration_ms: 11.436455
+  type: 'test'
+  ...
+# Subtest: submission commits task, dependencies, inbox, audit and acknowledgement together
+ok 3 - submission commits task, dependencies, inbox, audit and acknowledgement together
+  ---
+  duration_ms: 17.317826
+  type: 'test'
+  ...
+# Subtest: replay returns the original acknowledgement; changed payload, actor or routing cannot reuse its key
+ok 4 - replay returns the original acknowledgement; changed payload, actor or routing cannot reuse its key
+  ---
+  duration_ms: 13.679397
+  type: 'test'
+  ...
+# Subtest: outbox failure rolls back task, dependencies, audit and ingress reservation; retry is safe
+ok 5 - outbox failure rolls back task, dependencies, audit and ingress reservation; retry is safe
+  ---
+  duration_ms: 17.602896
+  type: 'test'
+  ...
+# Subtest: unknown project, mismatched profile, missing dependency and forged input do not create partial records
+ok 6 - unknown project, mismatched profile, missing dependency and forged input do not create partial records
+  ---
+  duration_ms: 12.825854
+  type: 'test'
+  ...
+# Subtest: dependency edits detect transitive cycles and keep stored specification and edges consistent
+ok 7 - dependency edits detect transitive cycles and keep stored specification and edges consistent
+  ---
+  duration_ms: 18.144253
+  type: 'test'
+  ...
+# Subtest: two connections cannot overwrite stale task revisions; transitions have actor, reason and revision evidence
+ok 8 - two connections cannot overwrite stale task revisions; transitions have actor, reason and revision evidence
+  ---
+  duration_ms: 13.302668
+  type: 'test'
+  ...
+# Subtest: audit failure rolls back a state/revision update
+ok 9 - audit failure rolls back a state/revision update
+  ---
+  duration_ms: 9.146369
+  type: 'test'
+  ...
+# Subtest: eligibility and lifecycle guards refuse premature readiness, active work edits and approval bypass
+ok 10 - eligibility and lifecycle guards refuse premature readiness, active work edits and approval bypass
+  ---
+  duration_ms: 11.085754
+  type: 'test'
+  ...
+# Subtest: known credentials are redacted from stored specifications, acknowledgements and audit reasons
+ok 11 - known credentials are redacted from stored specifications, acknowledgements and audit reasons
+  ---
+  duration_ms: 13.647231
+  type: 'test'
+  ...
+# Subtest: notification queries use durable delivery metadata and reject inconsistent payload identity
+ok 12 - notification queries use durable delivery metadata and reject inconsistent payload identity
+  ---
+  duration_ms: 12.705736
+  type: 'test'
+  ...
+# Subtest: 15 acknowledged task identities, states, dependencies, events and notifications survive SIGKILL/reopen
+ok 13 - 15 acknowledged task identities, states, dependencies, events and notifications survive SIGKILL/reopen
+  ---
+  duration_ms: 268.602244
+  type: 'test'
+  ...
+# Subtest: simultaneous duplicate submissions from two processes create one task and one acknowledgement
+ok 14 - simultaneous duplicate submissions from two processes create one task and one acknowledgement
+  ---
+  duration_ms: 216.060794
+  type: 'test'
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 926.959985

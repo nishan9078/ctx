@@ -1,9 +1,8 @@
-import type { ApprovalRequest, Notification, TaskSpec, TaskState } from '../../shared/src/domain.js';
+import type { ApprovalRequest, Notification, TaskSpec, TaskState, CommandActor as CommandContext, TaskSnapshot } from '../../shared/src/domain.js';
 import type { CtxError } from '../../shared/src/errors.js';
 
 /** Trusted ingress establishes identity; task descriptions and MCP content cannot grant it. */
-export interface CommandContext { actorId: string; source: 'cli' | 'discord' | 'local'; requestId: string }
-export interface TaskSnapshot { spec: TaskSpec; state: TaskState; revision: number; reason?: string; nextRunAt?: string }
+export type { CommandActor as CommandContext, TaskSnapshot } from '../../shared/src/domain.js';
 interface RevisionCommand { taskId: string; expectedRevision: number }
 export interface CommandInputs {
   submit: { spec: TaskSpec; deduplicationKey: string };

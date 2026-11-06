@@ -23,6 +23,12 @@ export interface TaskSpec {
   maxWallMinutes: number;
   metadata: { source: 'cli' | 'discord' | 'local'; externalId?: string };
 }
+/** Trusted ingress supplies actor identity; these fields do not authenticate the caller. */
+export interface CommandActor { actorId: string; source: 'cli' | 'discord' | 'local'; requestId: string }
+export interface TaskSnapshot {
+  spec: TaskSpec; state: TaskState; revision: number; reason?: string; nextRunAt?: string;
+  createdAt: string; updatedAt: string;
+}
 export interface Attempt {
   id: string; taskId: string; sequence: number; taskRevision: number;
   state: 'leased' | 'running' | 'verifying' | 'completed' | 'failed' | 'interrupted' | 'cancelled';

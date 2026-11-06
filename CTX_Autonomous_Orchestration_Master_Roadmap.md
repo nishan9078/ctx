@@ -1104,17 +1104,17 @@ Type contracts, validation library, config schema, error taxonomy, ADRs, unit te
 
 - [x] `P02-01` Implement SQLite initialization, WAL, foreign keys, busy timeout, and migration runner.
 - [x] `P02-02` Create projects, tasks, dependencies, attempts, leases, events, outbox, inbox, approvals, checkpoints, artifacts and capacity tables.
-- [ ] `P02-03` Build repository methods using explicit transactions, not scattered SQL in UI code.
-- [ ] `P02-04` Implement `submitTask` that atomically inserts task, dependencies, event, and acknowledgement outbox record.
-- [ ] `P02-05` Implement optimistic version checks or equivalent compare-and-swap for task updates.
-- [ ] `P02-06` Enforce unique task IDs, deduplication keys, valid project IDs, and DAG cycle detection.
-- [ ] `P02-07` Implement durable event append on every transition with actor and timestamp.
+- [x] `P02-03` Build repository methods using explicit transactions, not scattered SQL in UI code.
+- [x] `P02-04` Implement `submitTask` that atomically inserts task, dependencies, event, and acknowledgement outbox record.
+- [x] `P02-05` Implement optimistic version checks or equivalent compare-and-swap for task updates.
+- [x] `P02-06` Enforce unique task IDs, deduplication keys, valid project IDs, and DAG cycle detection.
+- [x] `P02-07` Implement durable event append on every transition with actor and timestamp.
 - [ ] `P02-08` Implement artifact writer with atomic temp-file + rename and SHA-256 manifest.
 - [ ] `P02-09` Add DB backup/restore command and automatic migration backup.
-- [ ] `P02-10` Add persistence contract tests including restart, partial transaction rollback, duplicate submission, and malformed migration.
+- [x] `P02-10` Add persistence contract tests including restart, partial transaction rollback, duplicate submission, and malformed migration.
 - [ ] `P02-11` Set artifact retention and redaction defaults.
 
-**Progress record (2026-11-06):** [Storage foundation](docs/verification/phase-02/storage-foundation.md) passes its subtask checks. Full Phase 02 gate remains pending; P02-09 backup/restore is only partially implemented.
+**Progress record (2026-11-06):** [Storage foundation](docs/verification/phase-02/storage-foundation.md) and [transactional submission](docs/verification/phase-02/transactional-submission.md) pass their subtask checks. Full Phase 02 gate remains pending atomic artifacts, complete backup/restore and artifact retention defaults.
 
 ### Deliverables
 
@@ -1122,9 +1122,9 @@ Migrated SQLite DB, task store API, event history, artifact store, backup script
 
 ### Exit gate
 
-- [ ] Submit 15 fixture tasks; kill process; restart; all 15 retain identity, state, and dependencies.
-- [ ] Duplicate incoming event does not create duplicate task.
-- [ ] A failed transaction leaves no half-created task/outbox row.
+- [x] Submit 15 fixture tasks; kill process; restart; all 15 retain identity, state, and dependencies.
+- [x] Duplicate incoming event does not create duplicate task.
+- [x] A failed transaction leaves no half-created task/outbox row.
 - [ ] Backup restores into a clean temp directory and passes integrity check.
 - [ ] Every state change has an event with actor and reason.
 
