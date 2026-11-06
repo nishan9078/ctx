@@ -5,7 +5,7 @@ import type { FixtureVerification, LeaseClaim, QueueStatus, QueueWorker } from '
 import { CtxError } from '../../shared/src/errors.js';
 import { integer } from '../../shared/src/validation.js';
 import type { TaskRepository } from '../../persistence/src/task-repository.js';
-import { verifyFixture } from './fixture-worker.js';
+import { fixtureResultPipeline, type AttemptFinalizer } from './result-pipeline.js';
 interface Active { claim: LeaseClaim; abort: AbortController; promise: Promise<void> }
 export class DurableScheduler {
   readonly ownerId = randomUUID();
@@ -14,11 +14,11 @@ export class DurableScheduler {
   readonly #leaseMs: number;
   #stopping = false;
   #lastError?: string;
-  constructor(private readonly repository: TaskRepository, private readonly worker: QueueWorker, options: { leaseMs?: number; verifier?: (claim: LeaseClaim, actor: CommandActor, signal: AbortSignal) => Promise<FixtureVerification> } = {}) {
+  constructor(private readonly repository: TaskRepository, private readonly worker: QueueWorker, options: { leaseMs?: number; finalizer?: AttemptFinalizer; verifier?: (claim: LeaseClaim, actor: CommandActor, signal: AbortSignal) => Promise<FixtureVerification> } = {}) {
     this.#leaseMs = integer(options.leaseMs ?? 5000, 100, 60000, 'leaseMs'); this.#actor = { actorId: 'scheduler', source: 'local', requestId: this.ownerId };
-    this.verify = options.verifier ?? ((claim, actor, signal) => verifyFixture(repository, claim, actor, signal));
+    this.finalize = options.finalizer ?? fixtureResultPipeline(repository, options.verifier);
   }
-  private readonly verify: (claim: LeaseClaim, actor: CommandActor, signal: AbortSignal) => Promise<FixtureVerification>;
+  private readonly finalize: AttemptFinalizer;
   get activeCount(): number { return this.#active.size; }
   get lastError(): string | undefined { return this.#lastError; }
   tick(): number {
@@ -46,9 +46,7 @@ export class DurableScheduler {
       if (abort.signal.aborted) { this.repository.queue.stopped(claim, this.#actor, 'Worker quiesced after cancellation, shutdown or lease loss'); return; }
       if (outcome.kind !== 'success') { this.repository.queue.settle(claim, outcome, this.#actor); return; }
       this.repository.queue.beginVerification(claim, this.#actor);
-      const evidence = await this.verify(claim, this.#actor, abort.signal);
-      if (abort.signal.aborted) this.repository.queue.stopped(claim, this.#actor, 'Verification stopped after worker quiescence');
-      else await this.repository.queue.completeFixture(claim, evidence, this.#actor);
+      await this.finalize(claim, outcome, this.#actor, abort.signal);
     } catch (error) {
       if (!invoked) {
         try { this.repository.queue.stopped(claim, this.#actor, 'Worker invocation never began; failed start is safely quiescent'); } catch (stale) { if (!(stale instanceof CtxError && stale.code === 'CONFLICT')) throw stale; }

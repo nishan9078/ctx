@@ -1,0 +1,45 @@
+$ node scripts/check-package-boundaries.mjs
+{
+  "includesTypeImports": true,
+  "graph": {
+    "apps/cli": [
+      "packages/agents",
+      "packages/core",
+      "packages/environment",
+      "packages/persistence",
+      "packages/security",
+      "packages/shared",
+      "packages/verification"
+    ],
+    "packages/agents": [
+      "packages/shared"
+    ],
+    "packages/core": [
+      "packages/agents",
+      "packages/environment",
+      "packages/persistence",
+      "packages/shared",
+      "packages/verification"
+    ],
+    "packages/environment": [
+      "packages/shared"
+    ],
+    "packages/persistence": [
+      "packages/agents",
+      "packages/environment",
+      "packages/shared",
+      "packages/verification"
+    ],
+    "packages/security": [
+      "packages/environment",
+      "packages/shared"
+    ],
+    "packages/shared": [],
+    "packages/verification": [
+      "packages/environment",
+      "packages/shared"
+    ]
+  },
+  "cycles": [],
+  "sharedDependencies": []
+}

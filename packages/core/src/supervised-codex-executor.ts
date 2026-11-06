@@ -59,7 +59,7 @@ export class SupervisedCodexExecutor implements CodexExecutor {
     // Keep termination escalation alive even if the group leader exits first.
     const escalation = setInterval(() => { if (stopping) kill('SIGKILL'); }, (this.options.graceMs ?? 1000) + 1000);
     try {
-      if (!pgid) throw new CtxError('HARNESS_UNAVAILABLE', 'Unable to spawn Codex worker');
+      if (!pgid) { await closed; throw failure ?? new CtxError('HARNESS_UNAVAILABLE', 'Unable to spawn Codex worker'); }
       const identity = processIdentity(pgid);
       if (identity === 'unknown') throw new CtxError('ENVIRONMENT_UNAVAILABLE', 'Cannot establish Codex process identity');
       await input.onProcess?.({ pid: pgid, pgid, host: hostname(), identity, startedAt: new Date().toISOString() });

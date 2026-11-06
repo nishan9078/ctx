@@ -1,0 +1,130 @@
+TAP version 13
+# Subtest: worker events and sessions are fenced, replayable and survive reopen; handoff never completes task
+ok 1 - worker events and sessions are fenced, replayable and survive reopen; handoff never completes task
+  ---
+  duration_ms: 20.612529
+  type: 'test'
+  ...
+# Subtest: schema 4 backup remains restorable and migrates to schema 5 with a backup
+ok 2 - schema 4 backup remains restorable and migrates to schema 5 with a backup
+  ---
+  duration_ms: 30117.824
+  type: 'test'
+  ...
+# Subtest: dead scheduler recovery holds capacity while its recorded worker remains alive or unobservable
+ok 3 - dead scheduler recovery holds capacity while its recorded worker remains alive or unobservable
+  ---
+  duration_ms: 9.805226
+  type: 'test'
+  ...
+# Subtest: supervisor acknowledges events only after durable callback and records owned process identity
+ok 4 - supervisor acknowledges events only after durable callback and records owned process identity
+  ---
+  duration_ms: 37.269478
+  type: 'test'
+  ...
+# Subtest: pre-cancelled supervisor never spawns
+ok 5 - pre-cancelled supervisor never spawns
+  ---
+  duration_ms: 0.402394
+  type: 'test'
+  ...
+# Subtest: cancellation kills a resistant worker and its descendant before settling
+ok 6 - cancellation kills a resistant worker and its descendant before settling
+  ---
+  duration_ms: 1066.312552
+  type: 'test'
+  ...
+# Subtest: normal leader exit still cleans resistant descendants
+ok 7 - normal leader exit still cleans resistant descendants
+  ---
+  duration_ms: 198.262868
+  type: 'test'
+  ...
+# Subtest: abnormal child exit is not successful execution
+ok 8 - abnormal child exit is not successful execution
+  ---
+  duration_ms: 27.582724
+  type: 'test'
+  ...
+# Subtest: event sink failure terminates the worker and preserves the persistence error
+ok 9 - event sink failure terminates the worker and preserves the persistence error
+  ---
+  duration_ms: 1075.18405
+  type: 'test'
+  ...
+# Subtest: SDK host kills its group after its supervising parent is SIGKILLed
+ok 10 - SDK host kills its group after its supervising parent is SIGKILLed
+  ---
+  duration_ms: 1120.087425
+  type: 'test'
+  ...
+# Subtest: durable queue runs installed SDK in owned host, preserves diff/events and blocks unverified completion
+ok 11 - durable queue runs installed SDK in owned host, preserves diff/events and blocks unverified completion
+  ---
+  duration_ms: 288.547632
+  type: 'test'
+  ...
+# Subtest: queue records truncated without completing task
+ok 12 - queue records truncated without completing task
+  ---
+  duration_ms: 119.886856
+  type: 'test'
+  ...
+# Subtest: queue records killed without completing task
+ok 13 - queue records killed without completing task
+  ---
+  duration_ms: 125.630694
+  type: 'test'
+  ...
+# Subtest: queue records auth without completing task
+ok 14 - queue records auth without completing task
+  ---
+  duration_ms: 121.014768
+  type: 'test'
+  ...
+# Subtest: queue records rate without completing task
+ok 15 - queue records rate without completing task
+  ---
+  duration_ms: 112.498698
+  type: 'test'
+  ...
+# Subtest: missing credentials block before any process is spawned
+ok 16 - missing credentials block before any process is spawned
+  ---
+  duration_ms: 8.664746
+  type: 'test'
+  ...
+# Subtest: queue cancellation waits for the real SDK process group to stop
+ok 17 - queue cancellation waits for the real SDK process group to stop
+  ---
+  duration_ms: 1111.782001
+  type: 'test'
+  ...
+# Subtest: transient resource exhaustion before launch persists a bounded retry deadline
+ok 18 - transient resource exhaustion before launch persists a bounded retry deadline
+  ---
+  duration_ms: 50.560787
+  type: 'test'
+  ...
+# Subtest: v3-to-v4 rebuild preserves attempt, artifact, checkpoint and session references with FK enforcement enabled
+ok 19 - v3-to-v4 rebuild preserves attempt, artifact, checkpoint and session references with FK enforcement enabled
+  ---
+  duration_ms: 12.334519
+  type: 'test'
+  ...
+# Subtest: active v3 workers and drifted v3 migration history stop upgrade without advancing schema
+ok 20 - active v3 workers and drifted v3 migration history stop upgrade without advancing schema
+  ---
+  duration_ms: 7.907887
+  type: 'test'
+  ...
+1..20
+# tests 20
+# suites 0
+# pass 20
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 30202.121865

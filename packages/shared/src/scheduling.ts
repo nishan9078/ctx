@@ -7,7 +7,7 @@ export interface QueueStatus {
   blocked: number; completed: number; failed: number; cancelled: number; paused: number; nextRunAt?: string;
 }
 export interface ClaimInput { ownerId: string; workerKind: WorkerKind; leaseMs: number }
-export type WorkerOutcome = { kind: 'success' } | { kind: 'failed'; reason: string; retryable: boolean; delayMs?: number }
+export type WorkerOutcome = { kind: 'success'; artifactIds?: string[] } | { kind: 'failed'; reason: string; retryable: boolean; delayMs?: number }
   | { kind: 'capacity'; reason: string; delayMs: number } | { kind: 'blocked'; reason: string } | { kind: 'approval'; reason: string };
 export interface QueueWorker {
   readonly kind: WorkerKind;

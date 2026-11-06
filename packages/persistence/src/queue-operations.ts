@@ -12,7 +12,7 @@ import { CtxError } from '../../shared/src/errors.js';
 import { identifier, integer, record, text } from '../../shared/src/validation.js';
 import { assertTaskTransition, isTerminalState } from '../../shared/src/transitions.js';
 import { readJsonFile, sha256 } from './artifact-files.js';
-import { ownerState, processIdentity } from './process-identity.js';
+import { ownerState, processIdentity, workerGroupState } from './process-identity.js';
 export interface QueueContext {
   db: DatabaseSync; dataDirectory: string; write<T>(work: () => T): T;
   read<T>(work: () => T): T;
@@ -20,6 +20,7 @@ export interface QueueContext {
   actor(value: CommandActor): CommandActor; safeText(value: unknown, path: string): string;
   event(entity: string, id: string, type: string, actor: CommandActor, reason: string, payload: unknown, taskId?: string): void;
   verifyArtifact(id: string): Promise<ArtifactManifest>;
+  redactText(value: string): string;
 }
 interface LeaseRow { task_id: string; attempt_id: string; owner_id: string; fencing_token: number; expires_at: string; owner_pid: number; owner_host: string; owner_start: string }
 export interface StoredWorkerEvent { attemptId: string; sequence: number; kind: 'canonical' | 'diagnostic'; type: string; payload: unknown; deliveryId: string; createdAt: string }
@@ -222,6 +223,8 @@ export class QueueOperations {
       const counts = { recovered: 0, alive: 0, unknown: 0 }; const leases = this.#c.db.prepare('SELECT * FROM ctx_leases WHERE expires_at<=?').all(now()) as unknown as LeaseRow[];
       for (const lease of leases) {
         const state = ownerState(lease.owner_pid, lease.owner_host, lease.owner_start); if (state !== 'dead') { counts[state]++; continue; }
+        const worker = this.workerProcess(lease.attempt_id);
+        if (worker) { const workerState = workerGroupState(worker); if (workerState !== 'dead') { counts[workerState]++; continue; } }
         const attempt = this.#c.db.prepare('SELECT harness_id FROM ctx_attempts WHERE id=?').get(lease.attempt_id) as { harness_id: string }; const intent = this.control(lease.task_id);
         this.#c.db.prepare("UPDATE ctx_attempts SET state='interrupted',ended_at=? WHERE id=?").run(now(), lease.attempt_id); this.#c.db.prepare('DELETE FROM ctx_leases WHERE task_id=? AND fencing_token=?').run(lease.task_id, lease.fencing_token); this.#c.db.prepare('UPDATE ctx_tasks SET control_intent=NULL WHERE id=?').run(lease.task_id);
         this.move(lease.task_id, intent === 'cancel' ? 'cancelled' : intent === 'pause' ? 'paused' : attempt.harness_id === 'fixture' ? 'recovering' : 'blocked', actor, attempt.harness_id === 'fixture' ? 'Expired fixture owner confirmed dead; idempotent retry is safe' : 'Owner confirmed dead; real worker effects require explicit reconciliation', now());
@@ -237,7 +240,7 @@ export class QueueOperations {
   /** Feature C (P04-04): fenced worker event / diagnostics / session / process records. */
   private boundedPayload(payload: unknown): string {
     const bound = (value: unknown, depth: number, stringCap: number): unknown => {
-      if (typeof value === 'string') return this.#c.safeText(value.length > stringCap ? `${value.slice(0, stringCap)}[TRUNCATED]` : value, 'workerEvent.payload');
+      if (typeof value === 'string') return this.#c.redactText(value.length > stringCap ? `${value.slice(0, stringCap)}[TRUNCATED]` : value);
       if (Array.isArray(value)) return depth > 8 ? '[OMITTED]' : value.slice(0, 100).map(item => bound(item, depth + 1, stringCap));
       if (typeof value === 'object' && value !== null) return depth > 8 ? '[OMITTED]' : Object.fromEntries(Object.entries(value).slice(0, 100).map(([key, item]) => [key, bound(item, depth + 1, stringCap)]));
       return value;
@@ -251,17 +254,29 @@ export class QueueOperations {
   appendWorkerEvent(claim: LeaseClaim, input: { kind: 'canonical' | 'diagnostic'; type: string; payload: unknown; deliveryId: string }): { sequence: number } {
     const type = this.#c.safeText(input.type, 'workerEvent.type');
     const deliveryId = this.#c.safeText(input.deliveryId, 'workerEvent.deliveryId');
-    const payload = this.boundedPayload(input.payload);
+    if (input.kind === 'canonical') {
+      const event = record(input.payload, 'workerEvent');
+      if (event.taskId !== claim.task.spec.id || event.attemptId !== claim.attempt.id || event.type !== type) throw new CtxError('CONFLICT', 'Canonical event identity does not match its claim');
+    }
+    const serialize = (sequence: number) => this.boundedPayload(input.kind === 'canonical' ? { ...record(input.payload, 'workerEvent'), sequence } : input.payload);
     return this.#c.write(() => {
       this.fence(claim);
       const existing = this.#c.db.prepare('SELECT sequence,kind,type,payload FROM ctx_worker_events WHERE attempt_id=? AND delivery_id=?').get(claim.attempt.id, deliveryId) as { sequence: number; kind: string; type: string; payload: string } | undefined;
       if (existing) {
-        if (existing.kind === input.kind && existing.type === type && existing.payload === payload) return { sequence: existing.sequence };
+        if (existing.kind === input.kind && existing.type === type && existing.payload === serialize(existing.sequence)) return { sequence: existing.sequence };
         throw new CtxError('CONFLICT', 'Duplicate worker event delivery conflicts with the recorded content');
       }
       const next = (this.#c.db.prepare('SELECT COALESCE(MAX(sequence),0)+1 AS n FROM ctx_worker_events WHERE attempt_id=?').get(claim.attempt.id) as { n: number }).n;
-      this.#c.db.prepare('INSERT INTO ctx_worker_events(attempt_id,sequence,kind,type,payload,delivery_id,created_at) VALUES(?,?,?,?,?,?,?)').run(claim.attempt.id, next, input.kind, type, payload, deliveryId, now());
+      this.#c.db.prepare('INSERT INTO ctx_worker_events(attempt_id,sequence,kind,type,payload,delivery_id,created_at) VALUES(?,?,?,?,?,?,?)').run(claim.attempt.id, next, input.kind, type, serialize(next), deliveryId, now());
       return { sequence: next };
+    });
+  }
+  recordHarnessMetadata(claim: LeaseClaim, input: { modelId: string }, context: CommandActor): void {
+    const actor = this.#c.actor(context); const model = this.#c.safeText(input.modelId, 'modelId');
+    this.#c.write(() => {
+      this.fence(claim);
+      this.#c.db.prepare('UPDATE ctx_attempts SET provider_key=?,model_id=? WHERE id=?').run(`${claim.attempt.harnessId}/unknown`, model, claim.attempt.id);
+      this.#c.event('attempt', claim.attempt.id, 'attempt.harness_metadata', actor, 'Configured model recorded; provider/account identity remains unknown', { modelId: model }, claim.task.spec.id);
     });
   }
   recordSession(claim: LeaseClaim, session: { externalSessionId: string; externalRunId?: string; version: string }): void {
@@ -288,6 +303,10 @@ export class QueueOperations {
     const identity = this.#c.safeText(record.identity, 'workerProcess.identity');
     this.#c.write(() => {
       this.fence(claim);
+      integer(record.pid, 1, Number.MAX_SAFE_INTEGER, 'workerProcess.pid');
+      if (record.pgid !== record.pid || claim.attempt.harnessId === 'fixture') throw new CtxError('CONFLICT', 'Worker must own a dedicated real-harness process group');
+      const prior = this.workerProcess(claim.attempt.id);
+      if (prior && JSON.stringify(prior) !== JSON.stringify({ pid: record.pid, pgid: record.pgid, host, identity, startedAt: record.startedAt })) throw new CtxError('CONFLICT', 'Recorded worker process cannot be replaced');
       this.#c.db.prepare('INSERT INTO ctx_worker_processes(attempt_id,pid,pgid,host,identity,started_at) VALUES(?,?,?,?,?,?) ON CONFLICT(attempt_id) DO UPDATE SET pid=excluded.pid,pgid=excluded.pgid,host=excluded.host,identity=excluded.identity,started_at=excluded.started_at').run(claim.attempt.id, record.pid, record.pgid, host, identity, record.startedAt);
     });
   }

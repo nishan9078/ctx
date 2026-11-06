@@ -43,14 +43,17 @@ test('SDK host kills its group after its supervising parent is SIGKILLed', { tim
   const root = await mkdtemp(join(tmpdir(), 'ctx-sdk-orphan-')); const executable = await fakeCodex(root);
   const child = fork(resolve('dist/tests/fixtures/codex-supervisor-owner.js'), [executable, root], { execArgv: [], env: { ...process.env, NODE_TEST_CONTEXT: undefined, CTX_SDK_FIXTURE: 'hang' }, stdio: ['ignore', 'ignore', 'inherit', 'ipc'] });
   let pgid = 0; const exited = once(child, 'exit');
+  const running = new Promise<void>(resolve => child.on('message', value => { const frame = value as { type: string; pgid: number }; pgid = frame.pgid; if (frame.type === 'running') resolve(); }));
+  let deadline: NodeJS.Timeout | undefined;
   try {
-    const message = await Promise.race([once(child, 'message').then(([value]) => value as { pgid: number }), exited.then(() => { throw new Error('Fixture owner exited early'); })]);
-    pgid = message.pgid; assert.ok(liveProcessGroup(pgid).length >= 2);
+    await Promise.race([running, exited.then(() => { throw new Error('Fixture owner exited early'); }), new Promise<never>((_resolve, reject) => { deadline = setTimeout(() => reject(new Error('SDK fixture startup timed out')), 8000); })]);
+    clearTimeout(deadline); assert.ok(liveProcessGroup(pgid).length >= 2);
     child.kill('SIGKILL'); await exited;
     const until = Date.now() + 8000;
     while (liveProcessGroup(pgid).length && Date.now() < until) await delay(25);
     assert.deepEqual(liveProcessGroup(pgid), []);
   } finally {
+    clearTimeout(deadline);
     if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
     if (pgid && liveProcessGroup(pgid).length) process.kill(-pgid, 'SIGKILL');
     await rm(root, { recursive: true, force: true });

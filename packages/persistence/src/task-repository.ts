@@ -26,7 +26,7 @@ export class TaskRepository {
   readonly queue: QueueOperations;
   private constructor(db: DatabaseSync, env: NodeJS.ProcessEnv, readonly dataDirectory: string, readonly migrationBackupPath?: string) {
     this.#db = db; this.#env = env;
-    this.queue = new QueueOperations({ db, dataDirectory, write: work => this.write(work), read: work => this.read(work), task: id => this.task(id), project: id => this.getProject(id), actor: value => this.actor(value), safeText: (value, path) => this.safeText(value, path), event: (...args) => this.event(...args), verifyArtifact: id => this.verifyStoredArtifact(id) });
+    this.queue = new QueueOperations({ db, dataDirectory, write: work => this.write(work), read: work => this.read(work), task: id => this.task(id), project: id => this.getProject(id), actor: value => this.actor(value), safeText: (value, path) => this.safeText(value, path), event: (...args) => this.event(...args), verifyArtifact: id => this.verifyStoredArtifact(id), redactText: value => redactForDiagnostics(value, this.#env) as string });
   }
   static async open(filename: string, env: NodeJS.ProcessEnv = process.env): Promise<TaskRepository> {
     const opened = await openOrchestrationDatabase(filename);

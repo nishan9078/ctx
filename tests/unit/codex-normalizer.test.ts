@@ -75,3 +75,16 @@ test('rate-limit heuristic matches canonical patterns', () => {
   assert.equal(isRateLimitMessage('connection reset'), false);
   assert.equal(isRateLimitMessage(''), false);
 });
+
+test('minimal usage is accepted without inventing optional counters; later malformed events invalidate success', async () => {
+  const tracker = new CodexTurnTracker();
+  await normalizeCodexEvent({ type: 'turn.completed', usage: { input_tokens: 3, output_tokens: 1 } }, ctx, tracker, hooks);
+  assert.equal(tracker.terminal(), 'completed'); assert.deepEqual(tracker.usage?.extra, {});
+  await normalizeCodexEvent(null, ctx, tracker, hooks); assert.equal(tracker.terminal(), 'failed');
+});
+test('command failure with completed process status is unsuccessful; artifact persistence errors propagate', async () => {
+  const raw = { type: 'item.completed', item: { id: 'cmd', type: 'command_execution', command: 'false', aggregated_output: '', exit_code: 1, status: 'completed' } };
+  const result = await normalizeCodexEvent(raw, ctx, new CodexTurnTracker(), hooks);
+  if (result.kind === 'events') assert.equal((result.events[0] as { success: boolean }).success, false); else assert.fail();
+  await assert.rejects(normalizeCodexEvent(raw, ctx, new CodexTurnTracker(), { async persistCommandOutput() { throw new Error('lost fence'); } }), /lost fence/);
+});

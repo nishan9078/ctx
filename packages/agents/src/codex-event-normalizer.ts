@@ -39,6 +39,7 @@ export class CodexTurnTracker {
   rawCount = 0;
   commands: { toolId: string; command: string; exitCode: number | null; artifactId?: string }[] = [];
   terminal(): 'completed' | 'failed' | 'none' {
+    if (this.malformed) return 'failed';
     if (this.sawTurnCompleted) return this.failed ? 'failed' : 'completed';
     return this.failed ? 'failed' : 'none';
   }
@@ -93,12 +94,11 @@ async function handleItem(ctx: NormalizerContext, event: Record<string, unknown>
       const command = typeof item.command === 'string' ? item.command : '(unknown command)';
       const output = typeof item.aggregated_output === 'string' ? item.aggregated_output : '';
       const exitCode = (item.exit_code !== undefined && item.exit_code !== null) ? (typeof item.exit_code === 'number' && Number.isFinite(item.exit_code) ? item.exit_code : null) : null;
-      const ok = item.status === 'completed';
+      const ok = item.status === 'completed' && exitCode === 0;
       if (!ok) tracker.sawToolError = true;
       const events: WorkerEvent[] = [make(ctx, { type: 'tool_completed', toolId: id, success: ok })];
       let artifactId: string | undefined;
-      try { artifactId = (await hooks.persistCommandOutput({ toolId: id, command, output, exitCode })).artifactId; }
-      catch { tracker.malformed = true; return { kind: 'events', events }; } // artifact failure must not fabricate a command record
+      artifactId = (await hooks.persistCommandOutput({ toolId: id, command, output, exitCode })).artifactId;
       if (artifactId) events.push(make(ctx, { type: 'command_executed', command, exitCode, artifactId }));
       tracker.commands.push({ toolId: id, command, exitCode, artifactId });
       return { kind: 'events', events };
@@ -154,7 +154,7 @@ export async function normalizeCodexEvent(raw: unknown, ctx: NormalizerContext, 
       const keys = ['input_tokens', 'cached_input_tokens', 'cache_write_input_tokens', 'output_tokens', 'reasoning_output_tokens'];
       const numbers: Record<string, number> = {};
       let ok = true;
-      for (const key of keys) { const value = usage && asNumber(usage[key]); if (value === undefined) { ok = false; break; } numbers[key] = value; }
+      for (const key of keys) { const value = usage && asNumber(usage[key]); if (value === undefined) { if (key === 'input_tokens' || key === 'output_tokens' || usage?.[key] !== undefined) { ok = false; break; } } else numbers[key] = value; }
       if (!ok || !usage) { tracker.malformed = true; return diagnostic('malformed', { reason: 'invalid-usage' }); }
       tracker.sawTurnCompleted = true;
       tracker.usage = { inputTokens: numbers.input_tokens, outputTokens: numbers.output_tokens, extra: Object.fromEntries(Object.entries(numbers).filter(([k]) => k !== 'input_tokens' && k !== 'output_tokens')) };
