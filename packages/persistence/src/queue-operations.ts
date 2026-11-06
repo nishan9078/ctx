@@ -62,6 +62,13 @@ export class QueueOperations {
     this.#c.db.prepare('UPDATE ctx_tasks SET state=?,revision=revision+1,reason=?,next_run_at=?,updated_at=? WHERE id=?').run(to, why, nextRunAt, now(), id);
     const updated = this.#c.task(id); this.#c.event('task', id, `task.${to}`, actor, why, { from: task.state, to, revision: updated.revision }, id); this.notify(updated, `${id}: ${to}. ${why}`); return updated;
   }
+  assertLease(claim: LeaseClaim): void { this.fence(claim); }
+  private assertProjectIdentity(id: string): void {
+    const project = this.#c.project(id);
+    const identity = this.#c.db.prepare('SELECT device,inode FROM ctx_project_identities WHERE project_id=?').get(id) as { device: string; inode: string } | undefined;
+    const observed = statSync(project.repositoryPath, { bigint: true });
+    if (!identity || realpathSync(project.repositoryPath) !== project.repositoryPath || !observed.isDirectory() || identity.device !== String(observed.dev) || identity.inode !== String(observed.ino)) throw new CtxError('CONFLICT', 'Registered repository identity changed or needs owner re-registration');
+  }
   private control(id: string): 'pause' | 'cancel' | null { return (this.#c.db.prepare('SELECT control_intent FROM ctx_tasks WHERE id=?').get(id) as { control_intent: 'pause' | 'cancel' | null }).control_intent; }
   private epoch(id: string): number { return (this.#c.db.prepare('SELECT retry_epoch FROM ctx_tasks WHERE id=?').get(id) as { retry_epoch: number }).retry_epoch; }
   private count(id: string): number { return (this.#c.db.prepare('SELECT COUNT(*) AS n FROM ctx_attempts WHERE task_id=? AND retry_epoch=?').get(id, this.epoch(id)) as { n: number }).n; }
@@ -89,7 +96,7 @@ export class QueueOperations {
           if (task.spec.mode !== 'delegated') { this.move(id, 'blocked', actor, 'Interactive tasks require owner control'); changes++; continue; }
           if (this.count(id) >= task.spec.maxAttempts) { this.move(id, 'blocked', actor, 'Attempt budget exhausted; explicit owner retry required'); changes++; continue; }
           const project = this.#c.project(task.spec.projectId);
-          try { if (realpathSync(project.repositoryPath) !== project.repositoryPath || !statSync(project.repositoryPath).isDirectory()) throw new Error(); }
+          try { this.assertProjectIdentity(task.spec.projectId); }
           catch { this.move(id, 'blocked', actor, 'Registered repository is missing or changed identity'); changes++; continue; }
           if (project.policyId === 'fixture-only' && (project.verificationProfile !== 'fixture-v1' || JSON.stringify(task.spec.acceptance) !== JSON.stringify([fixtureAcceptance]))) { this.move(id, 'blocked', actor, 'Fixture tasks require the exact independently checkable fixture acceptance profile'); changes++; continue; }
           if (task.state !== 'ready') { this.move(id, 'ready', actor, 'Dependencies, registration and deadline permit execution'); changes++; }
@@ -113,7 +120,7 @@ export class QueueOperations {
         const task = this.#c.task(id); if (this.active(id) || this.pendingApproval(id) || this.count(id) >= task.spec.maxAttempts) continue;
         const project = this.#c.project(task.spec.projectId);
         if (task.spec.mode !== 'delegated' || input.workerKind === 'fixture' && JSON.stringify(task.spec.acceptance) !== JSON.stringify([fixtureAcceptance])) { this.move(id, 'blocked', actor, 'Worker capability or acceptance contract does not authorize this task'); continue; }
-        try { if (realpathSync(project.repositoryPath) !== project.repositoryPath || !statSync(project.repositoryPath).isDirectory()) throw new Error(); }
+        try { this.assertProjectIdentity(task.spec.projectId); }
         catch { this.move(id, 'blocked', actor, 'Registered repository changed before atomic claim'); continue; }
         if (this.#c.db.prepare("SELECT 1 FROM ctx_task_dependencies d JOIN ctx_tasks t ON t.id=d.prerequisite_id WHERE d.task_id=? AND t.state<>'completed' LIMIT 1").get(id)) continue;
         const used = (this.#c.db.prepare("SELECT COUNT(*) AS n FROM ctx_attempts a JOIN ctx_tasks t ON t.id=a.task_id WHERE t.project_id=? AND a.state IN ('leased','running','verifying')").get(task.spec.projectId) as { n: number }).n;
@@ -148,7 +155,7 @@ export class QueueOperations {
   beginVerification(claim: LeaseClaim, context: CommandActor): void {
     const actor = this.#c.actor(context); this.#c.write(() => { this.fence(claim); if (this.control(claim.task.spec.id) === 'cancel') throw new CtxError('CANCELLED', 'Cancellation requested'); this.move(claim.task.spec.id, 'verifying', actor, 'Worker returned; independent verification starts'); this.#c.db.prepare("UPDATE ctx_attempts SET state='verifying' WHERE id=?").run(claim.attempt.id); });
   }
-  private end(claim: LeaseClaim, state: Attempt['state']): void { this.#c.db.prepare('UPDATE ctx_attempts SET state=?,ended_at=? WHERE id=?').run(state, now(), claim.attempt.id); this.#c.db.prepare('DELETE FROM ctx_leases WHERE task_id=? AND attempt_id=? AND fencing_token=?').run(claim.task.spec.id, claim.attempt.id, claim.fencingToken); this.#c.db.prepare('UPDATE ctx_tasks SET control_intent=NULL WHERE id=?').run(claim.task.spec.id); }
+  private end(claim: LeaseClaim, state: Attempt['state']): void { this.#c.db.prepare('DELETE FROM ctx_workspace_access WHERE attempt_id=?').run(claim.attempt.id); this.#c.db.prepare('UPDATE ctx_attempts SET state=?,ended_at=? WHERE id=?').run(state, now(), claim.attempt.id); this.#c.db.prepare('DELETE FROM ctx_leases WHERE task_id=? AND attempt_id=? AND fencing_token=?').run(claim.task.spec.id, claim.attempt.id, claim.fencingToken); this.#c.db.prepare('UPDATE ctx_tasks SET control_intent=NULL WHERE id=?').run(claim.task.spec.id); }
   settle(claim: LeaseClaim, outcome: Exclude<WorkerOutcome, { kind: 'success' }>, context: CommandActor): void {
     const actor = this.#c.actor(context); const reason = this.#c.safeText(outcome.reason, 'reason');
     this.#c.write(() => {
@@ -226,6 +233,7 @@ export class QueueOperations {
         const worker = this.workerProcess(lease.attempt_id);
         if (worker) { const workerState = workerGroupState(worker); if (workerState !== 'dead') { counts[workerState]++; continue; } }
         const attempt = this.#c.db.prepare('SELECT harness_id FROM ctx_attempts WHERE id=?').get(lease.attempt_id) as { harness_id: string }; const intent = this.control(lease.task_id);
+        this.#c.db.prepare('DELETE FROM ctx_workspace_access WHERE attempt_id=?').run(lease.attempt_id);
         this.#c.db.prepare("UPDATE ctx_attempts SET state='interrupted',ended_at=? WHERE id=?").run(now(), lease.attempt_id); this.#c.db.prepare('DELETE FROM ctx_leases WHERE task_id=? AND fencing_token=?').run(lease.task_id, lease.fencing_token); this.#c.db.prepare('UPDATE ctx_tasks SET control_intent=NULL WHERE id=?').run(lease.task_id);
         this.move(lease.task_id, intent === 'cancel' ? 'cancelled' : intent === 'pause' ? 'paused' : attempt.harness_id === 'fixture' ? 'recovering' : 'blocked', actor, attempt.harness_id === 'fixture' ? 'Expired fixture owner confirmed dead; idempotent retry is safe' : 'Owner confirmed dead; real worker effects require explicit reconciliation', now());
         this.#c.event('attempt', lease.attempt_id, 'attempt.reconciled', actor, 'Lease owner identity confirmed exited', { fencingToken: lease.fencing_token }, lease.task_id); counts.recovered++;

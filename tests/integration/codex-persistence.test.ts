@@ -35,18 +35,18 @@ test('worker events and sessions are fenced, replayable and survive reopen; hand
     assert.throws(() => f.repository.queue.appendWorkerEvent(claim, event));
   } finally { await f.cleanup(); }
 });
-test('schema 4 backup remains restorable and migrates to schema 5 with a backup', async () => {
+test('schema 4 backup remains restorable and migrates to the current schema with a backup', async () => {
   const root = await mkdtemp(join(tmpdir(), 'ctx-v4-backup-')); const filename = join(root, 'state.sqlite');
   try {
     const opened = await openOrchestrationDatabase(filename); opened.db.close();
     const db = new DatabaseSync(filename);
-    db.exec('DROP TABLE ctx_worker_events; DROP TABLE ctx_worker_processes; DELETE FROM ctx_schema_migrations WHERE version=5; PRAGMA user_version=4;'); db.close();
+    db.exec('DROP TABLE ctx_workspace_access; DROP TABLE ctx_workspaces; DROP TABLE ctx_project_identities; DROP TABLE ctx_worker_events; DROP TABLE ctx_worker_processes; DELETE FROM ctx_schema_migrations WHERE version>=5; PRAGMA user_version=4;'); db.close();
     const backup = await createBackup(filename, join(root, 'bundle')); assert.equal(backup.manifest.databaseVersion, 4);
     const restored = await restoreBackup(join(root, 'bundle'), join(root, 'restored'));
     const upgraded = await openOrchestrationDatabase(restored.database);
     try {
       assert.equal(upgraded.migratedFrom, 4); assert.ok(upgraded.backupPath);
-      assert.equal((upgraded.db.prepare('SELECT sha256 FROM ctx_schema_migrations WHERE version=5').get() as { sha256: string }).sha256, sha256(migrations.at(-1)!.sql));
+      assert.equal((upgraded.db.prepare('SELECT sha256 FROM ctx_schema_migrations WHERE version=?').get(migrations.at(-1)!.version) as { sha256: string }).sha256, sha256(migrations.at(-1)!.sql));
     } finally { upgraded.db.close(); }
   } finally { await rm(root, { recursive: true, force: true }); }
 });

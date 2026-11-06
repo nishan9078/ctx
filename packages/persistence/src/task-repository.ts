@@ -11,7 +11,8 @@ import { choice, identifier, integer, keys, list, parseTaskSpec, record, seriali
 import { assertTaskTransition } from '../../shared/src/transitions.js';
 import { redactForDiagnostics } from '../../shared/src/redact.js';
 import { artifactPolicy, type ArtifactRecord } from '../../shared/src/artifacts.js';
-import { recordedManifestHash, sha256, validateArtifact, verifyArtifact } from './artifact-files.js';
+import { ordinaryDirectory, recordedManifestHash, sha256, validateArtifact, verifyArtifact } from './artifact-files.js';
+import { WorkspaceRegistry } from './workspace-registry.js';
 import { QueueOperations } from './queue-operations.js';
 
 interface TaskRow { id: string; project_id: string; spec_json: string; state: string; priority: string; revision: number; reason: string | null; next_run_at: string | null; created_at: string; updated_at: string }
@@ -24,9 +25,11 @@ export class TaskRepository {
   readonly #db: DatabaseSync;
   readonly #env: NodeJS.ProcessEnv;
   readonly queue: QueueOperations;
+  readonly workspaces: WorkspaceRegistry;
   private constructor(db: DatabaseSync, env: NodeJS.ProcessEnv, readonly dataDirectory: string, readonly migrationBackupPath?: string) {
     this.#db = db; this.#env = env;
     this.queue = new QueueOperations({ db, dataDirectory, write: work => this.write(work), read: work => this.read(work), task: id => this.task(id), project: id => this.getProject(id), actor: value => this.actor(value), safeText: (value, path) => this.safeText(value, path), event: (...args) => this.event(...args), verifyArtifact: id => this.verifyStoredArtifact(id), redactText: value => redactForDiagnostics(value, this.#env) as string });
+    this.workspaces = new WorkspaceRegistry({ db, dataDirectory, write: work => this.write(work), read: work => this.read(work), assertLease: claim => this.queue.assertLease(claim), task: id => this.task(id), event: (id, type, actor, payload, taskId) => this.event('workspace', id, type, this.actor(actor), type, payload, taskId) });
   }
   static async open(filename: string, env: NodeJS.ProcessEnv = process.env): Promise<TaskRepository> {
     const opened = await openOrchestrationDatabase(filename);
@@ -77,14 +80,22 @@ export class TaskRepository {
     let canonical: string;
     try { canonical = await realpath(path); if (!(await stat(canonical)).isDirectory()) throw new Error(); }
     catch { throw new CtxError('ENVIRONMENT_UNAVAILABLE', 'Repository directory is inaccessible'); }
+    await ordinaryDirectory(canonical);
+    const identity = await stat(canonical, { bigint: true });
     return this.write(() => {
+      const rememberIdentity = () => {
+        const prior = this.#db.prepare('SELECT device,inode FROM ctx_project_identities WHERE project_id=?').get(id) as { device: string; inode: string } | undefined;
+        if (prior && (prior.device !== String(identity.dev) || prior.inode !== String(identity.ino))) throw new CtxError('CONFLICT', 'Registered source directory identity changed; explicit recovery is required');
+        this.#db.prepare('INSERT INTO ctx_project_identities VALUES(?,?,?) ON CONFLICT(project_id) DO NOTHING').run(id, String(identity.dev), String(identity.ino));
+      };
       const existing = this.#db.prepare('SELECT * FROM ctx_projects WHERE id=? OR canonical_path=?').all(id, canonical) as unknown as ProjectRow[];
       if (existing.length) {
         const row = existing[0];
         if (existing.length !== 1 || row.id !== id || row.canonical_path !== canonical || row.policy_id !== policyId || row.test_profile !== profile) throw new CtxError('CONFLICT', 'Project registration conflicts with an existing identity, path or policy');
-        return this.project(row);
+        rememberIdentity(); return this.project(row);
       }
       this.#db.prepare('INSERT INTO ctx_projects VALUES(?,?,?,?,?)').run(id, canonical, policyId, profile, new Date().toISOString());
+      rememberIdentity();
       this.event('project', id, 'project.registered', actor, why, { policyId, verificationProfile: profile });
       return this.getProject(id);
     });

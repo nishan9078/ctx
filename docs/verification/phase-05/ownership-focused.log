@@ -1,0 +1,192 @@
+TAP version 13
+# (node:121683) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: worker events and sessions are fenced, replayable and survive reopen; handoff never completes task
+ok 1 - worker events and sessions are fenced, replayable and survive reopen; handoff never completes task
+  ---
+  duration_ms: 52.791078
+  type: 'test'
+  ...
+# Subtest: schema 4 backup remains restorable and migrates to the current schema with a backup
+ok 2 - schema 4 backup remains restorable and migrates to the current schema with a backup
+  ---
+  duration_ms: 44.29667
+  type: 'test'
+  ...
+# Subtest: dead scheduler recovery holds capacity while its recorded worker remains alive or unobservable
+ok 3 - dead scheduler recovery holds capacity while its recorded worker remains alive or unobservable
+  ---
+  duration_ms: 29.424436
+  type: 'test'
+  ...
+# (node:121684) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: fresh V1 database initializes durable settings and all tables without a legacy task import
+ok 4 - fresh V1 database initializes durable settings and all tables without a legacy task import
+  ---
+  duration_ms: 28.435084
+  type: 'test'
+  ...
+# Subtest: v2 migration backs up committed WAL state and preserves legacy task/event data and APIs
+ok 5 - v2 migration backs up committed WAL state and preserves legacy task/event data and APIs
+  ---
+  duration_ms: 25.017248
+  type: 'test'
+  ...
+# Subtest: v1 legacy resource migration remains lossless on the V1 initialization path
+ok 6 - v1 legacy resource migration remains lossless on the V1 initialization path
+  ---
+  duration_ms: 17.098512
+  type: 'test'
+  ...
+# Subtest: malformed migration rolls back all schema/version/history changes and keeps a recoverable backup
+ok 7 - malformed migration rolls back all schema/version/history changes and keeps a recoverable backup
+  ---
+  duration_ms: 24.087335
+  type: 'test'
+  ...
+# Subtest: startup rejects future versions, unversioned nonempty databases, and changed migration history
+ok 8 - startup rejects future versions, unversioned nonempty databases, and changed migration history
+  ---
+  duration_ms: 15.602556
+  type: 'test'
+  ...
+# Subtest: migration refuses outstanding legacy leases instead of guessing worker liveness
+ok 9 - migration refuses outstanding legacy leases instead of guessing worker liveness
+  ---
+  duration_ms: 13.480146
+  type: 'test'
+  ...
+# Subtest: V1 schema enforces references, deduplication, one active attempt, and immutable events
+ok 10 - V1 schema enforces references, deduplication, one active attempt, and immutable events
+  ---
+  duration_ms: 10.704627
+  type: 'test'
+  ...
+# (node:121685) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: project registration canonicalizes directories, is idempotent and never overwrites path/policy identity
+ok 11 - project registration canonicalizes directories, is idempotent and never overwrites path/policy identity
+  ---
+  duration_ms: 38.089811
+  type: 'test'
+  ...
+# Subtest: invalid registration is rejected without an event or implicit project creation
+ok 12 - invalid registration is rejected without an event or implicit project creation
+  ---
+  duration_ms: 14.416764
+  type: 'test'
+  ...
+# Subtest: submission commits task, dependencies, inbox, audit and acknowledgement together
+ok 13 - submission commits task, dependencies, inbox, audit and acknowledgement together
+  ---
+  duration_ms: 20.821482
+  type: 'test'
+  ...
+# Subtest: replay returns the original acknowledgement; changed payload, actor or routing cannot reuse its key
+ok 14 - replay returns the original acknowledgement; changed payload, actor or routing cannot reuse its key
+  ---
+  duration_ms: 15.895058
+  type: 'test'
+  ...
+# Subtest: outbox failure rolls back task, dependencies, audit and acknowledgement; retry is safe
+ok 15 - outbox failure rolls back task, dependencies, audit and acknowledgement; retry is safe
+  ---
+  duration_ms: 16.549188
+  type: 'test'
+  ...
+# Subtest: inbox failure rolls back task, dependencies, audit and acknowledgement; retry is safe
+ok 16 - inbox failure rolls back task, dependencies, audit and acknowledgement; retry is safe
+  ---
+  duration_ms: 20.015928
+  type: 'test'
+  ...
+# Subtest: unknown project, mismatched profile, missing dependency and forged input do not create partial records
+ok 17 - unknown project, mismatched profile, missing dependency and forged input do not create partial records
+  ---
+  duration_ms: 20.904963
+  type: 'test'
+  ...
+# Subtest: dependency edits detect transitive cycles and keep stored specification and edges consistent
+ok 18 - dependency edits detect transitive cycles and keep stored specification and edges consistent
+  ---
+  duration_ms: 17.522808
+  type: 'test'
+  ...
+# Subtest: two connections cannot overwrite stale task revisions; transitions have actor, reason and revision evidence
+ok 19 - two connections cannot overwrite stale task revisions; transitions have actor, reason and revision evidence
+  ---
+  duration_ms: 16.193671
+  type: 'test'
+  ...
+# Subtest: audit failure rolls back a state/revision update
+ok 20 - audit failure rolls back a state/revision update
+  ---
+  duration_ms: 15.798377
+  type: 'test'
+  ...
+# Subtest: eligibility and lifecycle guards refuse premature readiness, active work edits and approval bypass
+ok 21 - eligibility and lifecycle guards refuse premature readiness, active work edits and approval bypass
+  ---
+  duration_ms: 14.690437
+  type: 'test'
+  ...
+# Subtest: known credentials are redacted from stored specifications, acknowledgements and audit reasons
+ok 22 - known credentials are redacted from stored specifications, acknowledgements and audit reasons
+  ---
+  duration_ms: 15.154744
+  type: 'test'
+  ...
+# Subtest: notification queries use durable delivery metadata and reject inconsistent payload identity
+ok 23 - notification queries use durable delivery metadata and reject inconsistent payload identity
+  ---
+  duration_ms: 12.340381
+  type: 'test'
+  ...
+# Subtest: 15 acknowledged task identities, states, dependencies, events and notifications survive SIGKILL/reopen
+ok 24 - 15 acknowledged task identities, states, dependencies, events and notifications survive SIGKILL/reopen
+  ---
+  duration_ms: 252.618103
+  type: 'test'
+  ...
+# Subtest: simultaneous duplicate submissions from two processes create one task and one acknowledgement
+ok 25 - simultaneous duplicate submissions from two processes create one task and one acknowledgement
+  ---
+  duration_ms: 206.649364
+  type: 'test'
+  ...
+# (node:121686) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: workspace reservation is fenced, audited, exclusive and released only when the attempt settles
+ok 26 - workspace reservation is fenced, audited, exclusive and released only when the attempt settles
+  ---
+  duration_ms: 72.933567
+  type: 'test'
+  ...
+# Subtest: ownership intent and workspace access roll back together if immutable audit insertion fails
+ok 27 - ownership intent and workspace access roll back together if immutable audit insertion fails
+  ---
+  duration_ms: 22.882288
+  type: 'test'
+  ...
+# Subtest: project inode replacement or symlink substitution blocks claims without changing owner files
+ok 28 - project inode replacement or symlink substitution blocks claims without changing owner files
+  ---
+  duration_ms: 28.522185
+  type: 'test'
+  ...
+# Subtest: schema 5 migrates with historical event/session preservation and requires explicit project identity registration
+ok 29 - schema 5 migrates with historical event/session preservation and requires explicit project identity registration
+  ---
+  duration_ms: 32.579086
+  type: 'test'
+  ...
+1..29
+# tests 29
+# suites 0
+# pass 29
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 926.894876
