@@ -18,7 +18,6 @@ export class CodexSdkAdapter implements AgentAdapter {
       for await (const raw of events) {
         // Runtime guard even though SDK declares this stream statically.
         if (!raw || typeof raw !== 'object' || typeof raw.type !== 'string') throw new Error('Malformed SDK event');
-        if (!['thread.started', 'turn.started', 'item.started', 'item.updated', 'item.completed', 'turn.completed', 'turn.failed', 'error'].includes(raw.type)) throw new Error('Unknown SDK event type');
         const event: ThreadEvent = raw;
         await input.onEvent?.({ type: event.type, data: event });
         switch (event.type) {
