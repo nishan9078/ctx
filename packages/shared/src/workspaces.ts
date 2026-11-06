@@ -2,6 +2,7 @@ export type WorkspaceState = 'creating' | 'ready' | 'archived' | 'cleanup' | 're
 export interface WorkspaceIdentity {
   root: string; worktree: string; snapshot: string;
   device?: string; inode?: string;
+  snapshotDevice?: string; snapshotInode?: string; worktreeDevice?: string; worktreeInode?: string;
   baseSha?: string; sourceSha?: string; branch?: string;
 }
 export interface OwnedWorkspace {

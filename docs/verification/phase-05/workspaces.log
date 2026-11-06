@@ -1,0 +1,220 @@
+TAP version 13
+# (node:123009) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: a simple folder request executes the agent and verifies an actual empty directory without Docker/build scripts
+ok 1 - a simple folder request executes the agent and verifies an actual empty directory without Docker/build scripts
+  ---
+  duration_ms: 284.35376
+  type: 'test'
+  ...
+# Subtest: file content acceptance is independent of an agent success claim
+ok 2 - file content acceptance is independent of an agent success claim
+  ---
+  duration_ms: 416.573897
+  type: 'test'
+  ...
+# Subtest: explicit checks on a filesystem request remain required
+ok 3 - explicit checks on a filesystem request remain required
+  ---
+  duration_ms: 195.313999
+  type: 'test'
+  ...
+# Subtest: application changes compile TypeScript and independently run tests
+ok 4 - application changes compile TypeScript and independently run tests
+  ---
+  duration_ms: 3208.678429
+  type: 'test'
+  ...
+# Subtest: auto never downgrades Docker without permission; authorized host fallback is journaled
+ok 5 - auto never downgrades Docker without permission; authorized host fallback is journaled
+  ---
+  duration_ms: 864.435403
+  type: 'test'
+  ...
+# Subtest: host recovery installs a missing local dependency from a frozen lockfile only with explicit permission
+ok 6 - host recovery installs a missing local dependency from a frozen lockfile only with explicit permission
+  ---
+  duration_ms: 3547.237721
+  type: 'test'
+  ...
+# Subtest: the CTX release bundle cannot become a target repository
+ok 7 - the CTX release bundle cannot become a target repository
+  ---
+  duration_ms: 4.872726
+  type: 'test'
+  ...
+# Subtest: security-sensitive work cannot pass without its required security check
+ok 8 - security-sensitive work cannot pass without its required security check
+  ---
+  duration_ms: 690.347905
+  type: 'test'
+  ...
+# (node:123010) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: private Git worktree preserves source dirty/untracked and ignored development files
+ok 9 - private Git worktree preserves source dirty/untracked and ignored development files
+  ---
+  duration_ms: 179.249425
+  type: 'test'
+  ...
+# Subtest: deterministic PostgreSQL recovery precedes model repair, preserves evidence and cleans only task resources (simulated Docker)
+ok 10 - deterministic PostgreSQL recovery precedes model repair, preserves evidence and cleans only task resources (simulated Docker)
+  ---
+  duration_ms: 682.802833
+  type: 'test'
+  ...
+# Subtest: environment blocks safely: unavailable
+ok 11 - environment blocks safely: unavailable
+  ---
+  duration_ms: 135.646694
+  type: 'test'
+  ...
+# Subtest: environment blocks safely: budget
+ok 12 - environment blocks safely: budget
+  ---
+  duration_ms: 265.885152
+  type: 'test'
+  ...
+# Subtest: environment blocks safely: repeated
+ok 13 - environment blocks safely: repeated
+  ---
+  duration_ms: 335.58892
+  type: 'test'
+  ...
+# Subtest: environment blocks safely: missing-key
+ok 14 - environment blocks safely: missing-key
+  ---
+  duration_ms: 246.840215
+  type: 'test'
+  ...
+# Subtest: environment blocks safely: install-denied
+ok 15 - environment blocks safely: install-denied
+  ---
+  duration_ms: 236.624705
+  type: 'test'
+  ...
+# Subtest: explicit mock contract is marked mock and live integration unverified (simulated Docker)
+ok 16 - explicit mock contract is marked mock and live integration unverified (simulated Docker)
+  ---
+  duration_ms: 422.26347
+  type: 'test'
+  ...
+# Subtest: missing env creates non-secret development placeholders without copying example values
+ok 17 - missing env creates non-secret development placeholders without copying example values
+  ---
+  duration_ms: 412.774051
+  type: 'test'
+  ...
+# Subtest: frozen dependency installation requires explicit permission and remains sandboxed
+ok 18 - frozen dependency installation requires explicit permission and remains sandboxed
+  ---
+  duration_ms: 360.520848
+  type: 'test'
+  ...
+# Subtest: ownership validation prevents removal/adoption of unrelated Docker containers
+ok 19 - ownership validation prevents removal/adoption of unrelated Docker containers
+  ---
+  duration_ms: 0.540867
+  type: 'test'
+  ...
+# Subtest: unhealthy disposable database blocks recovery and never claims health success (simulated Docker)
+ok 20 - unhealthy disposable database blocks recovery and never claims health success (simulated Docker)
+  ---
+  duration_ms: 6116.408924
+  type: 'test'
+  ...
+# Subtest: mock template serves explicit contracts and health checks without a real external API
+ok 21 - mock template serves explicit contracts and health checks without a real external API
+  ---
+  duration_ms: 342.026414
+  type: 'test'
+  ...
+# Subtest: schema migration preserves legacy resource data and exposes cleanup status
+ok 22 - schema migration preserves legacy resource data and exposes cleanup status
+  ---
+  duration_ms: 4.553849
+  type: 'test'
+  ...
+# Subtest: environment budgets cannot be reset or changed without a persisted recovery intent
+ok 23 - environment budgets cannot be reset or changed without a persisted recovery intent
+  ---
+  duration_ms: 1788.067851
+  type: 'test'
+  ...
+# Subtest: missing images respect explicit pull permission: false
+ok 24 - missing images respect explicit pull permission: false
+  ---
+  duration_ms: 128.41534
+  type: 'test'
+  ...
+# Subtest: missing images respect explicit pull permission: true
+ok 25 - missing images respect explicit pull permission: true
+  ---
+  duration_ms: 227.984798
+  type: 'test'
+  ...
+# Subtest: image inspection infrastructure failures never trigger a pull or coding attempt
+ok 26 - image inspection infrastructure failures never trigger a pull or coding attempt
+  ---
+  duration_ms: 126.015541
+  type: 'test'
+  ...
+# Subtest: socket failures retain process diagnostics and do not retry with elevated permissions
+ok 27 - socket failures retain process diagnostics and do not retry with elevated permissions
+  ---
+  duration_ms: 128.730411
+  type: 'test'
+  ...
+# Subtest: control-plane failure during verification blocks without model repair: permission
+ok 28 - control-plane failure during verification blocks without model repair: permission
+  ---
+  duration_ms: 188.684816
+  type: 'test'
+  ...
+# Subtest: control-plane failure during verification blocks without model repair: container-start
+ok 29 - control-plane failure during verification blocks without model repair: container-start
+  ---
+  duration_ms: 182.930941
+  type: 'test'
+  ...
+# Subtest: permission failure provisioning PostgreSQL retains recovery evidence and the original access diagnostic
+ok 30 - permission failure provisioning PostgreSQL retains recovery evidence and the original access diagnostic
+  ---
+  duration_ms: 213.896563
+  type: 'test'
+  ...
+# (node:123011) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: owned task branch preserves source edits, archives ignored/new/committed files and cleans idempotently
+ok 31 - owned task branch preserves source edits, archives ignored/new/committed files and cleans idempotently
+  ---
+  duration_ms: 435.651879
+  type: 'test'
+  ...
+# Subtest: cleanup refuses unarchived dirty work and human-owned or substituted directories
+ok 32 - cleanup refuses unarchived dirty work and human-owned or substituted directories
+  ---
+  duration_ms: 322.264248
+  type: 'test'
+  ...
+# Subtest: cancelled creation and Git lock conflicts retain owned partial state without touching source
+ok 33 - cancelled creation and Git lock conflicts retain owned partial state without touching source
+  ---
+  duration_ms: 196.722236
+  type: 'test'
+  ...
+# Subtest: cleanup can resume after interruption between worktree and private snapshot removal
+ok 34 - cleanup can resume after interruption between worktree and private snapshot removal
+  ---
+  duration_ms: 225.148795
+  type: 'test'
+  ...
+1..34
+# tests 34
+# suites 0
+# pass 34
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 13514.072861
