@@ -53,3 +53,10 @@ test('probe surfaces CLI timeout as an error and stays available=false', async (
   assert.equal(readiness.cliAvailable, false);
   assert.match(readiness.probeErrors[0] ?? '', /codex --version/);
 });
+
+
+test('probe resolves the real ESM SDK package and ignores CLI warnings', async () => {
+  const result = await probeCodex({ env: {}, run: runner({ code: 0, output: 'WARNING: unable to create aliases\ncodex-cli 0.166.0\n' }) });
+  assert.equal(result.sdkVersion, '0.166.0');
+  assert.equal(result.cliVersion, 'codex-cli 0.166.0');
+});

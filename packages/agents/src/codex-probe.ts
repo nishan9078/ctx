@@ -1,4 +1,5 @@
-import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { homedir } from 'node:os';
 import { lstat } from 'node:fs/promises';
@@ -54,8 +55,9 @@ function defaultRun(command: string, args: string[], timeoutMs: number): Promise
 
 function installedSdkVersion(): string {
   try {
-    const require = createRequire(import.meta.url);
-    const pkg = require('@openai/codex-sdk/package.json') as { version?: unknown };
+    // The SDK exports only its ESM entrypoint, not package.json.
+    const entry = import.meta.resolve('@openai/codex-sdk');
+    const pkg = JSON.parse(readFileSync(fileURLToPath(new URL('../package.json', entry)), 'utf8')) as { version?: unknown };
     return typeof pkg.version === 'string' && pkg.version.length > 0 ? pkg.version : 'unknown';
   } catch {
     return 'unknown';
@@ -78,7 +80,7 @@ export async function probeCodex(options: CodexProbeOptions = {}): Promise<Codex
     } else if (result.code !== 0) {
       probeErrors.push(`codex --version exited with code ${String(result.code)}`);
     } else {
-      const version = result.output.trim().split(/\r?\n/)[0]?.trim() ?? '';
+      const version = result.output.split(/\r?\n/).map(line => line.trim()).find(line => /^codex-cli \d+\.\d+\.\d+(?:[^\s]*)?$/.test(line)) ?? '';
       if (!version) probeErrors.push('codex --version produced no version output');
       else { cliVersion = version; cliAvailable = true; }
     }

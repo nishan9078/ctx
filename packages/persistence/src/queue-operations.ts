@@ -187,8 +187,8 @@ export class QueueOperations {
       this.fence(claim); const id = claim.task.spec.id; const task = this.#c.task(id); const project = this.#c.project(task.spec.projectId);
       if (project.policyId !== 'fixture-only' || project.verificationProfile !== 'fixture-v1' || JSON.stringify(task.spec.acceptance) !== JSON.stringify([fixtureAcceptance])) throw new CtxError('CONFLICT', 'Fixture completion is restricted to its explicit project and acceptance contract');
       if (this.control(id) === 'cancel') { this.end(claim, 'cancelled'); this.move(id, 'cancelled', actor, 'Cancellation won before finalization'); return; }
-      const run = randomUUID(); const at = now(); this.#c.db.prepare('INSERT INTO ctx_verification_runs VALUES(?,?,?,?,?,?)').run(run, claim.attempt.id, 'fixture-v1', 'passed', at, at);
-      for (const [name, artifact] of [['fixture-output', result.id], ['fixture-report', report.id]]) this.#c.db.prepare('INSERT INTO ctx_verification_steps(run_id,name,required,status,command,exit_code,stdout_ref) VALUES(?,?,?,?,?,?,?)').run(run, name, 1, 'passed', 'deterministic fixture verifier (no live harness)', 0, artifact);
+      const run = randomUUID(); const at = now(); this.#c.db.prepare('INSERT INTO ctx_verification_runs(id,attempt_id,profile,status,started_at,ended_at) VALUES(?,?,?,?,?,?)').run(run, claim.attempt.id, 'fixture-v1', 'passed', at, at);
+      for (const [name, artifact] of [['fixture-output', result.id], ['fixture-report', report.id]]) this.#c.db.prepare('INSERT INTO ctx_verification_steps(run_id,name,required,status,command,exit_code,stdout_ref,stderr_ref) VALUES(?,?,?,?,?,?,?,?)').run(run, name, 1, 'passed', 'deterministic fixture verifier (no live harness)', 0, artifact);
       this.end(claim, 'completed'); this.move(id, 'completed', actor, 'Fixture-only task: independent output/profile checks and immutable evidence passed');
     });
   }
@@ -271,6 +271,8 @@ export class QueueOperations {
     this.#c.write(() => {
       this.fence(claim);
       if (!['codex', 'opencode'].includes(claim.attempt.harnessId)) throw new CtxError('CONFLICT', 'Session records only apply to real harness attempts');
+      const prior = this.session(claim.attempt.id);
+      if (prior && (prior.externalSessionId !== external || prior.version !== version || prior.externalRunId !== runId)) throw new CtxError('CONFLICT', 'Recorded harness session cannot be replaced');
       this.#c.db.prepare('INSERT INTO ctx_harness_sessions(attempt_id,adapter_id,external_session_id,external_run_id,version) VALUES(?,?,?,?,?) ON CONFLICT(attempt_id) DO UPDATE SET external_session_id=excluded.external_session_id,external_run_id=excluded.external_run_id,version=excluded.version').run(claim.attempt.id, claim.attempt.harnessId, external, runId, version);
     });
   }
@@ -308,8 +310,8 @@ export class QueueOperations {
       if (task.state !== 'verifying') throw new CtxError('CONFLICT', 'Verification handoff requires the verifying state');
       if (this.control(id) === 'cancel') { this.end(claim, 'cancelled'); this.move(id, 'cancelled', actor, 'Cancellation won before verification handoff'); return; }
       const at = now(); const run = randomUUID();
-      this.#c.db.prepare('INSERT INTO ctx_verification_runs VALUES(?,?,?,?,?,?)').run(run, claim.attempt.id, task.spec.verificationProfile, 'not_run', at, at);
-      this.#c.db.prepare('INSERT INTO ctx_verification_steps(run_id,name,required,status,command,exit_code,stdout_ref) VALUES(?,?,?,?,?,?,?)').run(run, 'engineering-verification', 1, 'unavailable', 'P06 engineering verification pipeline is not available in this phase; required evidence is preserved for explicit verification', null, null);
+      this.#c.db.prepare('INSERT INTO ctx_verification_runs(id,attempt_id,profile,status,started_at,ended_at) VALUES(?,?,?,?,?,?)').run(run, claim.attempt.id, task.spec.verificationProfile, 'not_run', at, at);
+      this.#c.db.prepare('INSERT INTO ctx_verification_steps(run_id,name,required,status,command,exit_code,stdout_ref,stderr_ref) VALUES(?,?,?,?,?,?,?,?)').run(run, 'engineering-verification', 1, 'unavailable', 'P06 engineering verification pipeline is not available in this phase; required evidence is preserved for explicit verification', null, null, null);
       this.end(claim, 'completed');
       const artifactNote = input.artifactIds && input.artifactIds.length ? ` Evidence artifacts: ${input.artifactIds.join(', ')}.` : ' Evidence artifacts are preserved with the attempt.';
       this.move(id, 'blocked', actor, `${reason}.${artifactNote} Task is blocked awaiting independent verification and must not be treated as completed.`);

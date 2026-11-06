@@ -5,7 +5,7 @@ import { artifactPolicy, type ArtifactRecord } from '../../shared/src/artifacts.
 import { CtxError, ValidationError } from '../../shared/src/errors.js';
 import { identifier, integer, keys, list, parseTaskSpec, record, relativePath, text } from '../../shared/src/validation.js';
 import { inspectFile, ordinaryDirectory, readJsonFile, recordedManifestHash, syncDirectories, syncPath, validateArtifact, verifyArtifact } from './artifact-files.js';
-import { currentSchemaVersion, verifyMigrationHistory } from './migrations.js';
+import { migrations, verifyMigrationHistory } from './migrations.js';
 
 interface BundleFile { path: string; sha256: string; bytes: number; kind: 'database' | 'artifact' | 'manifest' | 'legacy'; legacyRelativePath?: string }
 interface BackupManifest { schemaVersion: 1; databaseName: string; databaseVersion: number; createdAt: string; files: BundleFile[]; legacyArchivedIds: string[] }
@@ -13,7 +13,7 @@ const hasTable = (db: DatabaseSync, name: string): boolean => !!db.prepare("SELE
 const version = (db: DatabaseSync): number => (db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
 function databaseName(value: unknown): string { return identifier(value, 'backup.databaseName'); }
 function checkDatabase(db: DatabaseSync): void {
-  if (![2, 3, currentSchemaVersion].includes(version(db))) throw new CtxError('UNSUPPORTED_SCHEMA', 'Backup requires a known database schema');
+  if (!migrations.map(migration => migration.version).includes(version(db))) throw new CtxError('UNSUPPORTED_SCHEMA', 'Backup requires a known database schema');
   if ((db.prepare('PRAGMA integrity_check').get() as { integrity_check: string }).integrity_check !== 'ok' || db.prepare('PRAGMA foreign_key_check').all().length) throw new CtxError('CONFLICT', 'Database integrity or foreign-key validation failed');
   if (version(db) >= 3) verifyMigrationHistory(db, undefined, version(db));
   if (hasTable(db, 'ctx_tasks')) {
@@ -63,7 +63,7 @@ function validateManifest(input: unknown): BackupManifest {
     return { path, sha256: file.sha256, bytes: integer(file.bytes, 0, artifactPolicy.maxBackupBytes, 'backup.file.bytes'), kind: file.kind as BundleFile['kind'], ...(file.legacyRelativePath === undefined ? {} : { legacyRelativePath: relativePath(file.legacyRelativePath, 'backup.file.legacyRelativePath') }) };
   });
   const name = databaseName(value.databaseName);
-  if (![2, 3, currentSchemaVersion].includes(value.databaseVersion as number)) throw new ValidationError('backup.databaseVersion', 'unsupported database version');
+  if (!migrations.map(migration => migration.version).includes(value.databaseVersion as number)) throw new ValidationError('backup.databaseVersion', 'unsupported database version');
   if (new Set(files.map(file => file.path)).size !== files.length || files.reduce((sum, file) => sum + file.bytes, 0) > artifactPolicy.maxBackupBytes) throw new CtxError('BUDGET_EXHAUSTED', 'Backup contains duplicate paths or exceeds the byte budget');
   if (files.filter(file => file.kind === 'database').length !== 1 || !files.some(file => file.kind === 'database' && file.path === `database/${name}`)) throw new ValidationError('backup.files', 'expected exactly one database snapshot');
   for (const file of files) {
