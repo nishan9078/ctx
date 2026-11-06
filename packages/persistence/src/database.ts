@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { hostname } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { schema } from './schema.js';
+import { currentSchemaVersion } from './migrations.js';
 import { redact } from '../../shared/src/redact.js';
 import { assertTransition, assertStepTransition } from '../../shared/src/legacy-transitions.js';
 import type { TaskRecord } from './task-record.js';
@@ -28,7 +29,7 @@ export class TaskStore {
     }
     this.db = new DatabaseSync(path);
     const version = this.db.prepare('PRAGMA user_version').get() as { user_version: number };
-    if (version.user_version > 4) { this.db.close(); throw new Error('Unsupported database schema version'); }
+    if (version.user_version > currentSchemaVersion) { this.db.close(); throw new Error('Unsupported database schema version'); }
     this.db.exec(schema);
     if (version.user_version < 2) this.transaction(() => {
       if ((this.db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version >= 2) return;

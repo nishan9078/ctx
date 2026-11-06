@@ -5,6 +5,7 @@ import { dirname, join, resolve } from 'node:path';
 import { schema } from './schema.js';
 import { orchestrationSchema } from './orchestration-schema.js';
 import { queueSchema } from './queue-schema.js';
+import { workerEventsSchema } from './worker-events-schema.js';
 import { CtxError } from '../../shared/src/errors.js';
 
 export interface Migration { version: number; name: string; sql: string }
@@ -12,8 +13,9 @@ export const migrations: readonly Migration[] = [
   { version: 2, name: 'legacy-runner-v2', sql: schema.replace(/^PRAGMA .*;$/gm, '') + "\nALTER TABLE resources ADD COLUMN status TEXT NOT NULL DEFAULT 'ready';\nALTER TABLE resources ADD COLUMN data TEXT NOT NULL DEFAULT '{}';" },
   { version: 3, name: 'versioned-orchestration', sql: orchestrationSchema },
   { version: 4, name: 'durable-queue-ownership', sql: queueSchema },
+  { version: 5, name: 'codex-worker-events', sql: workerEventsSchema },
 ];
-export const currentSchemaVersion = 4;
+export const currentSchemaVersion = 5;
 const checksum = (migration: Migration) => createHash('sha256').update(migration.sql).digest('hex');
 const versionOf = (db: DatabaseSync) => (db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
 export interface OpenDatabaseResult { db: DatabaseSync; migratedFrom: number; backupPath?: string }

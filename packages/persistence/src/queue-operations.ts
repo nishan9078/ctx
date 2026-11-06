@@ -22,6 +22,9 @@ export interface QueueContext {
   verifyArtifact(id: string): Promise<ArtifactManifest>;
 }
 interface LeaseRow { task_id: string; attempt_id: string; owner_id: string; fencing_token: number; expires_at: string; owner_pid: number; owner_host: string; owner_start: string }
+export interface StoredWorkerEvent { attemptId: string; sequence: number; kind: 'canonical' | 'diagnostic'; type: string; payload: unknown; deliveryId: string; createdAt: string }
+export interface StoredSession { externalSessionId: string | null; externalRunId: string | null; version: string }
+export interface StoredWorkerProcess { pid: number; pgid: number; host: string; identity: string; startedAt: string }
 const now = (): string => new Date().toISOString();
 const deadline = (delay: number): string => new Date(Date.now() + integer(delay, 0, 86400000, 'delayMs')).toISOString();
 const activeStates = ['leased', 'running', 'verifying'];
@@ -150,6 +153,11 @@ export class QueueOperations {
     this.#c.write(() => {
       this.fence(claim); const id = claim.task.spec.id; const intent = this.control(id);
       if (intent === 'cancel') { this.end(claim, 'cancelled'); this.move(id, 'cancelled', actor, 'Worker stopped after cancellation'); return; }
+      if (outcome.kind === 'blocked') {
+        // Uncertain side effects (transport loss after possible edits, missing auth,
+        // codex turn without required verification) must block for reconciliation.
+        this.end(claim, 'interrupted'); this.move(id, 'blocked', actor, reason); return;
+      }
       if (outcome.kind === 'approval') {
         this.end(claim, 'interrupted'); const task = this.move(id, 'waiting_approval', actor, reason); const approvalId = randomUUID();
         this.#c.db.prepare('INSERT INTO ctx_approvals(id,task_id,task_revision,attempt_id,action,action_hash,requested_by,expires_at,decision) VALUES(?,?,?,?,?,?,?,?,?)').run(approvalId, id, task.revision, claim.attempt.id, 'external_write', sha256(JSON.stringify([id, claim.attempt.id, task.spec.objective])), actor.actorId, deadline(3600000), 'pending');
@@ -226,6 +234,95 @@ export class QueueOperations {
     identifier(taskId, 'taskId'); const rows = this.#c.db.prepare('SELECT * FROM ctx_attempts WHERE task_id=? ORDER BY sequence').all(taskId) as { id: string; sequence: number; task_revision: number; state: Attempt['state']; harness_id: Attempt['harnessId']; provider_key: string; model_id: string; fencing_token: number; started_at: string; ended_at: string | null }[];
     return rows.map(row => ({ id: row.id, taskId, sequence: row.sequence, taskRevision: row.task_revision, state: row.state, harnessId: row.harness_id, providerKey: row.provider_key, modelId: row.model_id, fencingToken: row.fencing_token, startedAt: row.started_at, ...(row.ended_at ? { endedAt: row.ended_at } : {}) }));
   }
+  /** Feature C (P04-04): fenced worker event / diagnostics / session / process records. */
+  private boundedPayload(payload: unknown): string {
+    const bound = (value: unknown, depth: number, stringCap: number): unknown => {
+      if (typeof value === 'string') return this.#c.safeText(value.length > stringCap ? `${value.slice(0, stringCap)}[TRUNCATED]` : value, 'workerEvent.payload');
+      if (Array.isArray(value)) return depth > 8 ? '[OMITTED]' : value.slice(0, 100).map(item => bound(item, depth + 1, stringCap));
+      if (typeof value === 'object' && value !== null) return depth > 8 ? '[OMITTED]' : Object.fromEntries(Object.entries(value).slice(0, 100).map(([key, item]) => [key, bound(item, depth + 1, stringCap)]));
+      return value;
+    };
+    let cap = 4096;
+    let serialized = JSON.stringify(bound(payload, 0, cap));
+    while (serialized.length > 8192 && cap > 0) { cap = Math.floor(cap / 2); serialized = JSON.stringify(bound(payload, 0, cap)); }
+    if (serialized.length > 8192) throw new CtxError('BUDGET_EXHAUSTED', 'Worker event payload exceeds the durable event budget');
+    return serialized;
+  }
+  appendWorkerEvent(claim: LeaseClaim, input: { kind: 'canonical' | 'diagnostic'; type: string; payload: unknown; deliveryId: string }): { sequence: number } {
+    const type = this.#c.safeText(input.type, 'workerEvent.type');
+    const deliveryId = this.#c.safeText(input.deliveryId, 'workerEvent.deliveryId');
+    const payload = this.boundedPayload(input.payload);
+    return this.#c.write(() => {
+      this.fence(claim);
+      const existing = this.#c.db.prepare('SELECT sequence,kind,type,payload FROM ctx_worker_events WHERE attempt_id=? AND delivery_id=?').get(claim.attempt.id, deliveryId) as { sequence: number; kind: string; type: string; payload: string } | undefined;
+      if (existing) {
+        if (existing.kind === input.kind && existing.type === type && existing.payload === payload) return { sequence: existing.sequence };
+        throw new CtxError('CONFLICT', 'Duplicate worker event delivery conflicts with the recorded content');
+      }
+      const next = (this.#c.db.prepare('SELECT COALESCE(MAX(sequence),0)+1 AS n FROM ctx_worker_events WHERE attempt_id=?').get(claim.attempt.id) as { n: number }).n;
+      this.#c.db.prepare('INSERT INTO ctx_worker_events(attempt_id,sequence,kind,type,payload,delivery_id,created_at) VALUES(?,?,?,?,?,?,?)').run(claim.attempt.id, next, input.kind, type, payload, deliveryId, now());
+      return { sequence: next };
+    });
+  }
+  recordSession(claim: LeaseClaim, session: { externalSessionId: string; externalRunId?: string; version: string }): void {
+    const external = this.#c.safeText(session.externalSessionId, 'session.externalSessionId');
+    const version = this.#c.safeText(session.version, 'session.version');
+    const runId = session.externalRunId !== undefined ? this.#c.safeText(session.externalRunId, 'session.externalRunId') : null;
+    this.#c.write(() => {
+      this.fence(claim);
+      if (!['codex', 'opencode'].includes(claim.attempt.harnessId)) throw new CtxError('CONFLICT', 'Session records only apply to real harness attempts');
+      this.#c.db.prepare('INSERT INTO ctx_harness_sessions(attempt_id,adapter_id,external_session_id,external_run_id,version) VALUES(?,?,?,?,?) ON CONFLICT(attempt_id) DO UPDATE SET external_session_id=excluded.external_session_id,external_run_id=excluded.external_run_id,version=excluded.version').run(claim.attempt.id, claim.attempt.harnessId, external, runId, version);
+    });
+  }
+  session(attemptId: string): StoredSession | undefined {
+    identifier(attemptId, 'attemptId');
+    return this.#c.read(() => {
+      const row = this.#c.db.prepare('SELECT external_session_id,external_run_id,version FROM ctx_harness_sessions WHERE attempt_id=?').get(attemptId) as { external_session_id: string | null; external_run_id: string | null; version: string } | undefined;
+      return row ? { externalSessionId: row.external_session_id, externalRunId: row.external_run_id, version: row.version } : undefined;
+    });
+  }
+  recordWorkerProcess(claim: LeaseClaim, record: { pid: number; pgid: number; host: string; identity: string; startedAt: string }): void {
+    const host = this.#c.safeText(record.host, 'workerProcess.host');
+    const identity = this.#c.safeText(record.identity, 'workerProcess.identity');
+    this.#c.write(() => {
+      this.fence(claim);
+      this.#c.db.prepare('INSERT INTO ctx_worker_processes(attempt_id,pid,pgid,host,identity,started_at) VALUES(?,?,?,?,?,?) ON CONFLICT(attempt_id) DO UPDATE SET pid=excluded.pid,pgid=excluded.pgid,host=excluded.host,identity=excluded.identity,started_at=excluded.started_at').run(claim.attempt.id, record.pid, record.pgid, host, identity, record.startedAt);
+    });
+  }
+  workerProcess(attemptId: string): StoredWorkerProcess | undefined {
+    identifier(attemptId, 'attemptId');
+    return this.#c.read(() => {
+      const row = this.#c.db.prepare('SELECT pid,pgid,host,identity,started_at FROM ctx_worker_processes WHERE attempt_id=?').get(attemptId) as { pid: number; pgid: number; host: string; identity: string; started_at: string } | undefined;
+      return row ? { pid: row.pid, pgid: row.pgid, host: row.host, identity: row.identity, startedAt: row.started_at } : undefined;
+    });
+  }
+  /**
+   * Neutral finalization for Codex-turn success without P06 verification.
+   * Releases the lease, preserves evidence, and blocks the task for the
+   * engineering verification pipeline. Never marks the task completed.
+   */
+  blockVerificationHandoff(claim: LeaseClaim, context: CommandActor, input: { reason: string; artifactIds?: string[] }): void {
+    const actor = this.#c.actor(context); const reason = this.#c.safeText(input.reason, 'handoff.reason');
+    this.#c.write(() => {
+      this.fence(claim); const id = claim.task.spec.id; const task = this.#c.task(id);
+      if (task.state !== 'verifying') throw new CtxError('CONFLICT', 'Verification handoff requires the verifying state');
+      if (this.control(id) === 'cancel') { this.end(claim, 'cancelled'); this.move(id, 'cancelled', actor, 'Cancellation won before verification handoff'); return; }
+      const at = now(); const run = randomUUID();
+      this.#c.db.prepare('INSERT INTO ctx_verification_runs VALUES(?,?,?,?,?,?)').run(run, claim.attempt.id, task.spec.verificationProfile, 'not_run', at, at);
+      this.#c.db.prepare('INSERT INTO ctx_verification_steps(run_id,name,required,status,command,exit_code,stdout_ref) VALUES(?,?,?,?,?,?,?)').run(run, 'engineering-verification', 1, 'unavailable', 'P06 engineering verification pipeline is not available in this phase; required evidence is preserved for explicit verification', null, null);
+      this.end(claim, 'completed');
+      const artifactNote = input.artifactIds && input.artifactIds.length ? ` Evidence artifacts: ${input.artifactIds.join(', ')}.` : ' Evidence artifacts are preserved with the attempt.';
+      this.move(id, 'blocked', actor, `${reason}.${artifactNote} Task is blocked awaiting independent verification and must not be treated as completed.`);
+    });
+  }
+
+  workerEvents(attemptId: string, kind?: 'canonical' | 'diagnostic'): StoredWorkerEvent[] {
+    identifier(attemptId, 'attemptId');
+    const rows = this.#c.read(() => (this.#c.db.prepare('SELECT attempt_id,sequence,kind,type,payload,delivery_id,created_at FROM ctx_worker_events WHERE attempt_id=? AND (? IS NULL OR kind=?) ORDER BY sequence').all(attemptId, kind ?? null, kind ?? null) as { attempt_id: string; sequence: number; kind: 'canonical' | 'diagnostic'; type: string; payload: string; delivery_id: string; created_at: string }[])
+      .map(row => ({ attemptId: row.attempt_id, sequence: row.sequence, kind: row.kind, type: row.type, payload: JSON.parse(row.payload) as unknown, deliveryId: row.delivery_id, createdAt: row.created_at })));
+    return rows;
+  }
+
   status(): QueueStatus {
     return this.#c.read(() => this.snapshotStatus());
   }

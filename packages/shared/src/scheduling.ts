@@ -8,7 +8,7 @@ export interface QueueStatus {
 }
 export interface ClaimInput { ownerId: string; workerKind: WorkerKind; leaseMs: number }
 export type WorkerOutcome = { kind: 'success' } | { kind: 'failed'; reason: string; retryable: boolean; delayMs?: number }
-  | { kind: 'capacity'; reason: string; delayMs: number } | { kind: 'approval'; reason: string };
+  | { kind: 'capacity'; reason: string; delayMs: number } | { kind: 'blocked'; reason: string } | { kind: 'approval'; reason: string };
 export interface QueueWorker {
   readonly kind: WorkerKind;
   execute(input: { claim: LeaseClaim; signal: AbortSignal }): Promise<WorkerOutcome>;
