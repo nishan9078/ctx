@@ -1,0 +1,1100 @@
+$ pnpm build && node --test dist/tests/unit/*.test.js dist/tests/integration/*.test.js
+$ tsc
+TAP version 13
+# (node:47009) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: apply previews and confirms verified HTML and empty directories without staging or changing unrelated dirty work
+ok 1 - apply previews and confirms verified HTML and empty directories without staging or changing unrelated dirty work
+  ---
+  duration_ms: 508.97282
+  type: 'test'
+  ...
+# Subtest: apply refuses initial dirty/staged work, subsequent edits, and new-file collisions
+ok 2 - apply refuses initial dirty/staged work, subsequent edits, and new-file collisions
+  ---
+  duration_ms: 204.542152
+  type: 'test'
+  ...
+# Subtest: confirmation rechecks the target, evidence and verified worktree
+ok 3 - confirmation rechecks the target, evidence and verified worktree
+  ---
+  duration_ms: 170.112078
+  type: 'test'
+  ...
+# Subtest: apply refuses symlink parent escapes and failed tasks
+ok 4 - apply refuses symlink parent escapes and failed tasks
+  ---
+  duration_ms: 196.580936
+  type: 'test'
+  ...
+# Subtest: clean tracked changes and deletions apply with retained original backups
+ok 5 - clean tracked changes and deletions apply with retained original backups
+  ---
+  duration_ms: 285.841578
+  type: 'test'
+  ...
+# Subtest: partial apply rolls back on failure; concurrent edits are preserved with a recovery journal
+ok 6 - partial apply rolls back on failure; concurrent edits are preserved with a recovery journal
+  ---
+  duration_ms: 284.314656
+  type: 'test'
+  ...
+# Subtest: verified ignored HTML is present in the apply manifest even when Git has no file diff
+ok 7 - verified ignored HTML is present in the apply manifest even when Git has no file diff
+  ---
+  duration_ms: 449.867582
+  type: 'test'
+  ...
+# (node:47010) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: LIVE DOCKER: initially unavailable DB recovers using real disposable PostgreSQL, migrates, and passes tests
+ok 8 - LIVE DOCKER: initially unavailable DB recovers using real disposable PostgreSQL, migrates, and passes tests # SKIP
+  ---
+  duration_ms: 2.301587
+  type: 'test'
+  ...
+# (node:47011) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: SIGKILL recovery: confirmed
+ok 9 - SIGKILL recovery: confirmed
+  ---
+  duration_ms: 4005.627148
+  type: 'test'
+  ...
+# Subtest: SIGKILL recovery: ambiguous
+ok 10 - SIGKILL recovery: ambiguous
+  ---
+  duration_ms: 1449.125288
+  type: 'test'
+  ...
+# Subtest: SIGKILL recovery: verification
+ok 11 - SIGKILL recovery: verification
+  ---
+  duration_ms: 1844.971635
+  type: 'test'
+  ...
+# Subtest: repairs are bounded, reuse sessions, preserve evidence, and persist consumed budget
+ok 12 - repairs are bounded, reuse sessions, preserve evidence, and persist consumed budget
+  ---
+  duration_ms: 1931.908015
+  type: 'test'
+  ...
+# Subtest: budget exhaustion stops without extra agent attempts
+ok 13 - budget exhaustion stops without extra agent attempts
+  ---
+  duration_ms: 1595.726919
+  type: 'test'
+  ...
+# Subtest: invalid transitions roll back both state and event writes
+ok 14 - invalid transitions roll back both state and event writes
+  ---
+  duration_ms: 1896.041314
+  type: 'test'
+  ...
+# (node:47012) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: LIVE engineering: real Codex creates a directory and exact file; deterministic acceptance and lifecycle are retained
+ok 15 - LIVE engineering: real Codex creates a directory and exact file; deterministic acceptance and lifecycle are retained # SKIP
+  ---
+  duration_ms: 4.041607
+  type: 'test'
+  ...
+# Subtest: LIVE engineering: real Codex fixes TypeScript and independent compilation and tests pass
+ok 16 - LIVE engineering: real Codex fixes TypeScript and independent compilation and tests pass # SKIP
+  ---
+  duration_ms: 2.204459
+  type: 'test'
+  ...
+# (node:47013) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: a simple folder request executes the agent and verifies an actual empty directory without Docker/build scripts
+ok 17 - a simple folder request executes the agent and verifies an actual empty directory without Docker/build scripts
+  ---
+  duration_ms: 240.813058
+  type: 'test'
+  ...
+# Subtest: file content acceptance is independent of an agent success claim
+ok 18 - file content acceptance is independent of an agent success claim
+  ---
+  duration_ms: 308.505771
+  type: 'test'
+  ...
+# Subtest: explicit checks on a filesystem request remain required
+ok 19 - explicit checks on a filesystem request remain required
+  ---
+  duration_ms: 136.504948
+  type: 'test'
+  ...
+# Subtest: application changes compile TypeScript and independently run tests
+ok 20 - application changes compile TypeScript and independently run tests
+  ---
+  duration_ms: 3651.468638
+  type: 'test'
+  ...
+# Subtest: auto never downgrades Docker without permission; authorized host fallback is journaled
+ok 21 - auto never downgrades Docker without permission; authorized host fallback is journaled
+  ---
+  duration_ms: 838.580996
+  type: 'test'
+  ...
+# Subtest: host recovery installs a missing local dependency from a frozen lockfile only with explicit permission
+ok 22 - host recovery installs a missing local dependency from a frozen lockfile only with explicit permission
+  ---
+  duration_ms: 3776.744961
+  type: 'test'
+  ...
+# Subtest: the CTX release bundle cannot become a target repository
+ok 23 - the CTX release bundle cannot become a target repository
+  ---
+  duration_ms: 4.218881
+  type: 'test'
+  ...
+# Subtest: security-sensitive work cannot pass without its required security check
+ok 24 - security-sensitive work cannot pass without its required security check
+  ---
+  duration_ms: 723.671358
+  type: 'test'
+  ...
+# (node:47014) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: private Git worktree preserves source dirty/untracked and ignored development files
+ok 25 - private Git worktree preserves source dirty/untracked and ignored development files
+  ---
+  duration_ms: 237.224631
+  type: 'test'
+  ...
+# Subtest: deterministic PostgreSQL recovery precedes model repair, preserves evidence and cleans only task resources (simulated Docker)
+ok 26 - deterministic PostgreSQL recovery precedes model repair, preserves evidence and cleans only task resources (simulated Docker)
+  ---
+  duration_ms: 562.788107
+  type: 'test'
+  ...
+# Subtest: environment blocks safely: unavailable
+ok 27 - environment blocks safely: unavailable
+  ---
+  duration_ms: 83.464688
+  type: 'test'
+  ...
+# Subtest: environment blocks safely: budget
+ok 28 - environment blocks safely: budget
+  ---
+  duration_ms: 170.535882
+  type: 'test'
+  ...
+# Subtest: environment blocks safely: repeated
+ok 29 - environment blocks safely: repeated
+  ---
+  duration_ms: 253.532946
+  type: 'test'
+  ...
+# Subtest: environment blocks safely: missing-key
+ok 30 - environment blocks safely: missing-key
+  ---
+  duration_ms: 183.342881
+  type: 'test'
+  ...
+# Subtest: environment blocks safely: install-denied
+ok 31 - environment blocks safely: install-denied
+  ---
+  duration_ms: 153.079224
+  type: 'test'
+  ...
+# Subtest: explicit mock contract is marked mock and live integration unverified (simulated Docker)
+ok 32 - explicit mock contract is marked mock and live integration unverified (simulated Docker)
+  ---
+  duration_ms: 226.740199
+  type: 'test'
+  ...
+# Subtest: missing env creates non-secret development placeholders without copying example values
+ok 33 - missing env creates non-secret development placeholders without copying example values
+  ---
+  duration_ms: 244.010838
+  type: 'test'
+  ...
+# Subtest: frozen dependency installation requires explicit permission and remains sandboxed
+ok 34 - frozen dependency installation requires explicit permission and remains sandboxed
+  ---
+  duration_ms: 263.44629
+  type: 'test'
+  ...
+# Subtest: ownership validation prevents removal/adoption of unrelated Docker containers
+ok 35 - ownership validation prevents removal/adoption of unrelated Docker containers
+  ---
+  duration_ms: 1.039206
+  type: 'test'
+  ...
+# Subtest: unhealthy disposable database blocks recovery and never claims health success (simulated Docker)
+ok 36 - unhealthy disposable database blocks recovery and never claims health success (simulated Docker)
+  ---
+  duration_ms: 5999.523506
+  type: 'test'
+  ...
+# Subtest: mock template serves explicit contracts and health checks without a real external API
+ok 37 - mock template serves explicit contracts and health checks without a real external API
+  ---
+  duration_ms: 340.94793
+  type: 'test'
+  ...
+# Subtest: schema migration preserves legacy resource data and exposes cleanup status
+ok 38 - schema migration preserves legacy resource data and exposes cleanup status
+  ---
+  duration_ms: 3.513901
+  type: 'test'
+  ...
+# Subtest: environment budgets cannot be reset or changed without a persisted recovery intent
+ok 39 - environment budgets cannot be reset or changed without a persisted recovery intent
+  ---
+  duration_ms: 1825.484513
+  type: 'test'
+  ...
+# Subtest: missing images respect explicit pull permission: false
+ok 40 - missing images respect explicit pull permission: false
+  ---
+  duration_ms: 135.316499
+  type: 'test'
+  ...
+# Subtest: missing images respect explicit pull permission: true
+ok 41 - missing images respect explicit pull permission: true
+  ---
+  duration_ms: 231.954309
+  type: 'test'
+  ...
+# Subtest: image inspection infrastructure failures never trigger a pull or coding attempt
+ok 42 - image inspection infrastructure failures never trigger a pull or coding attempt
+  ---
+  duration_ms: 116.03569
+  type: 'test'
+  ...
+# Subtest: socket failures retain process diagnostics and do not retry with elevated permissions
+ok 43 - socket failures retain process diagnostics and do not retry with elevated permissions
+  ---
+  duration_ms: 119.101358
+  type: 'test'
+  ...
+# Subtest: control-plane failure during verification blocks without model repair: permission
+ok 44 - control-plane failure during verification blocks without model repair: permission
+  ---
+  duration_ms: 171.024651
+  type: 'test'
+  ...
+# Subtest: control-plane failure during verification blocks without model repair: container-start
+ok 45 - control-plane failure during verification blocks without model repair: container-start
+  ---
+  duration_ms: 197.823261
+  type: 'test'
+  ...
+# Subtest: permission failure provisioning PostgreSQL retains recovery evidence and the original access diagnostic
+ok 46 - permission failure provisioning PostgreSQL retains recovery evidence and the original access diagnostic
+  ---
+  duration_ms: 202.279775
+  type: 'test'
+  ...
+# (node:47015) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: LIVE: Codex implements a fixture feature and harness captures diff plus test results
+ok 47 - LIVE: Codex implements a fixture feature and harness captures diff plus test results # SKIP
+  ---
+  duration_ms: 3.423414
+  type: 'test'
+  ...
+# (node:47016) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: fixture feature produces real diff, passing checks and persisted evidence without source changes
+ok 48 - fixture feature produces real diff, passing checks and persisted evidence without source changes
+  ---
+  duration_ms: 4751.530572
+  type: 'test'
+  ...
+# Subtest: does not claim completion: failed-test
+ok 49 - does not claim completion: failed-test
+  ---
+  duration_ms: 1205.129607
+  type: 'test'
+  ...
+# Subtest: does not claim completion: missing-check
+ok 50 - does not claim completion: missing-check
+  ---
+  duration_ms: 1118.337626
+  type: 'test'
+  ...
+# Subtest: does not claim completion: agent-failed
+ok 51 - does not claim completion: agent-failed
+  ---
+  duration_ms: 109.095096
+  type: 'test'
+  ...
+# Subtest: does not claim completion: cancelled
+ok 52 - does not claim completion: cancelled
+  ---
+  duration_ms: 17.20125
+  type: 'test'
+  ...
+# Subtest: process timeout stops a hung command
+ok 53 - process timeout stops a hung command
+  ---
+  duration_ms: 56.859908
+  type: 'test'
+  ...
+# Subtest: CLI validates command and timeout
+ok 54 - CLI validates command and timeout
+  ---
+  duration_ms: 745.273213
+  type: 'test'
+  ...
+# Subtest: workspace rejects symlinks and prevents copying inside the source
+ok 55 - workspace rejects symlinks and prevents copying inside the source
+  ---
+  duration_ms: 5.34776
+  type: 'test'
+  ...
+# (node:47017) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: fresh V1 database initializes durable settings and all tables without a legacy task import
+ok 56 - fresh V1 database initializes durable settings and all tables without a legacy task import
+  ---
+  duration_ms: 47.692033
+  type: 'test'
+  ...
+# Subtest: v2 migration backs up committed WAL state and preserves legacy task/event data and APIs
+ok 57 - v2 migration backs up committed WAL state and preserves legacy task/event data and APIs
+  ---
+  duration_ms: 52.290067
+  type: 'test'
+  ...
+# Subtest: v1 legacy resource migration remains lossless on the V1 initialization path
+ok 58 - v1 legacy resource migration remains lossless on the V1 initialization path
+  ---
+  duration_ms: 22.766337
+  type: 'test'
+  ...
+# Subtest: malformed migration rolls back all schema/version/history changes and keeps a recoverable backup
+ok 59 - malformed migration rolls back all schema/version/history changes and keeps a recoverable backup
+  ---
+  duration_ms: 62.161787
+  type: 'test'
+  ...
+# Subtest: startup rejects future versions, unversioned nonempty databases, and changed migration history
+ok 60 - startup rejects future versions, unversioned nonempty databases, and changed migration history
+  ---
+  duration_ms: 19.889958
+  type: 'test'
+  ...
+# Subtest: migration refuses outstanding legacy leases instead of guessing worker liveness
+ok 61 - migration refuses outstanding legacy leases instead of guessing worker liveness
+  ---
+  duration_ms: 24.75207
+  type: 'test'
+  ...
+# Subtest: V1 schema enforces references, deduplication, one active attempt, and immutable events
+ok 62 - V1 schema enforces references, deduplication, one active attempt, and immutable events
+  ---
+  duration_ms: 13.333116
+  type: 'test'
+  ...
+# Subtest: subprocesses inherit actual identity/groups and explicit Docker environment without test-runner leakage
+ok 63 - subprocesses inherit actual identity/groups and explicit Docker environment without test-runner leakage
+  ---
+  duration_ms: 267.609408
+  type: 'test'
+  ...
+# (node:47034) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: journal adapter updates during execution; slash commands and modes work while overlapping tasks are refused
+ok 64 - journal adapter updates during execution; slash commands and modes work while overlapping tasks are refused
+  ---
+  duration_ms: 382.539879
+  type: 'test'
+  ...
+# Subtest: workspace selection preserves the launch directory and warns for an empty directory
+ok 65 - workspace selection preserves the launch directory and warns for an empty directory
+  ---
+  duration_ms: 18.084246
+  type: 'test'
+  ...
+# Subtest: an environment-blocked UI task starts Codex only after explicit /retry host approval
+ok 66 - an environment-blocked UI task starts Codex only after explicit /retry host approval
+  ---
+  duration_ms: 832.388925
+  type: 'test'
+  ...
+# (node:47035) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: CTX interface opens, configures a repository, and reviews a real saved task/diff
+ok 67 - CTX interface opens, configures a repository, and reviews a real saved task/diff
+  ---
+  duration_ms: 2517.551609
+  type: 'test'
+  ...
+# Subtest: security engine package imports and validates its runtime without pretending to scan
+ok 68 - security engine package imports and validates its runtime without pretending to scan
+  ---
+  duration_ms: 818.175426
+  type: 'test'
+  ...
+# Subtest: bundled execution runtime resolves through ESM exports for sign-in and diagnostics
+ok 69 - bundled execution runtime resolves through ESM exports for sign-in and diagnostics
+  ---
+  duration_ms: 209.468699
+  type: 'test'
+  ...
+# (node:47049) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: LIVE verification: real Codex builds a standalone Flappy Bird HTML, independent checks pass, and verified apply transfers it safely
+ok 70 - LIVE verification: real Codex builds a standalone Flappy Bird HTML, independent checks pass, and verified apply transfers it safely # SKIP
+  ---
+  duration_ms: 2.822896
+  type: 'test'
+  ...
+# (node:47050) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: standalone HTML Flappy Bird without package.json completes with independent syntax and honest unavailable browser evidence
+ok 71 - standalone HTML Flappy Bird without package.json completes with independent syntax and honest unavailable browser evidence
+  ---
+  duration_ms: 381.702962
+  type: 'test'
+  ...
+# Subtest: HTML script extraction parses real HTML semantics: module scripts, JSON, event handlers, and invalid JS
+ok 72 - HTML script extraction parses real HTML semantics: module scripts, JSON, event handlers, and invalid JS
+  ---
+  duration_ms: 1036.058119
+  type: 'test'
+  ...
+# Subtest: an explicit custom test is mandatory and a missing required command blocks precisely
+ok 73 - an explicit custom test is mandatory and a missing required command blocks precisely
+  ---
+  duration_ms: 1837.394111
+  type: 'test'
+  ...
+# Subtest: a required browser check cannot be removed or conflated with passing syntax
+ok 74 - a required browser check cannot be removed or conflated with passing syntax
+  ---
+  duration_ms: 329.701745
+  type: 'test'
+  ...
+# Subtest: an agent claim without generated artifacts cannot pass
+ok 75 - an agent claim without generated artifacts cannot pass
+  ---
+  duration_ms: 131.282975
+  type: 'test'
+  ...
+# Subtest: project classification distinguishes mixed, backend, documentation and configured runners
+ok 76 - project classification distinguishes mixed, backend, documentation and configured runners
+  ---
+  duration_ms: 5.732667
+  type: 'test'
+  ...
+# Subtest: an available browser result becomes mandatory and cannot disappear on a repair
+ok 77 - an available browser result becomes mandatory and cannot disappear on a repair
+  ---
+  duration_ms: 1877.523581
+  type: 'test'
+  ...
+# Subtest: captures streamed events, final summary, usage and sandbox options
+ok 78 - captures streamed events, final summary, usage and sandbox options
+  ---
+  duration_ms: 8.576163
+  type: 'test'
+  ...
+# Subtest: resumes a session
+ok 79 - resumes a session
+  ---
+  duration_ms: 0.839196
+  type: 'test'
+  ...
+# Subtest: truncated stream
+ok 80 - truncated stream
+  ---
+  duration_ms: 0.404965
+  type: 'test'
+  ...
+# Subtest: turn failure
+ok 81 - turn failure
+  ---
+  duration_ms: 0.267636
+  type: 'test'
+  ...
+# Subtest: transport failure
+ok 82 - transport failure
+  ---
+  duration_ms: 0.863874
+  type: 'test'
+  ...
+# Subtest: malformed event
+ok 83 - malformed event
+  ---
+  duration_ms: 0.558778
+  type: 'test'
+  ...
+# Subtest: invalid usage
+ok 84 - invalid usage
+  ---
+  duration_ms: 0.597044
+  type: 'test'
+  ...
+# Subtest: cancellation does not launch a thread
+ok 85 - cancellation does not launch a thread
+  ---
+  duration_ms: 0.622605
+  type: 'test'
+  ...
+# Subtest: commands expose all required operations and structured errors serialize without stack data
+ok 86 - commands expose all required operations and structured errors serialize without stack data
+  ---
+  duration_ms: 4.506668
+  type: 'test'
+  ...
+# Subtest: config defaults are conservative; supported environment overrides win without mutating input
+ok 87 - config defaults are conservative; supported environment overrides win without mutating input
+  ---
+  duration_ms: 39.676502
+  type: 'test'
+  ...
+# Subtest: registration and exact canonical allowlist reject child paths and unregistered projects
+ok 88 - registration and exact canonical allowlist reject child paths and unregistered projects
+  ---
+  duration_ms: 18.906725
+  type: 'test'
+  ...
+# Subtest: config rejects bad version
+ok 89 - config rejects bad version
+  ---
+  duration_ms: 0.769007
+  type: 'test'
+  ...
+# Subtest: config rejects null section
+ok 90 - config rejects null section
+  ---
+  duration_ms: 0.28106
+  type: 'test'
+  ...
+# Subtest: config rejects null scalar
+ok 91 - config rejects null scalar
+  ---
+  duration_ms: 0.274983
+  type: 'test'
+  ...
+# Subtest: config rejects sparse projects
+ok 92 - config rejects sparse projects
+  ---
+  duration_ms: 0.23401
+  type: 'test'
+  ...
+# Subtest: config rejects secret field
+ok 93 - config rejects secret field
+  ---
+  duration_ms: 0.201738
+  type: 'test'
+  ...
+# Subtest: config rejects too many workers
+ok 94 - config rejects too many workers
+  ---
+  duration_ms: 0.204894
+  type: 'test'
+  ...
+# Subtest: config rejects project concurrency
+ok 95 - config rejects project concurrency
+  ---
+  duration_ms: 0.783657
+  type: 'test'
+  ...
+# Subtest: config rejects unsafe network
+ok 96 - config rejects unsafe network
+  ---
+  duration_ms: 0.850217
+  type: 'test'
+  ...
+# Subtest: config rejects string boolean
+ok 97 - config rejects string boolean
+  ---
+  duration_ms: 0.393277
+  type: 'test'
+  ...
+# Subtest: config rejects sparse backoff
+ok 98 - config rejects sparse backoff
+  ---
+  duration_ms: 0.228261
+  type: 'test'
+  ...
+# Subtest: config rejects bad backoff
+ok 99 - config rejects bad backoff
+  ---
+  duration_ms: 0.156782
+  type: 'test'
+  ...
+# Subtest: config rejects relative repo
+ok 100 - config rejects relative repo
+  ---
+  duration_ms: 0.382369
+  type: 'test'
+  ...
+# Subtest: config rejects duplicate IDs
+ok 101 - config rejects duplicate IDs
+  ---
+  duration_ms: 0.262477
+  type: 'test'
+  ...
+# Subtest: invalid environment numbers fail before repository access and never echo values
+ok 102 - invalid environment numbers fail before repository access and never echo values
+  ---
+  duration_ms: 2.010162
+  type: 'test'
+  ...
+# Subtest: structured diagnostics redact nested credentials, known secret values, and URL userinfo
+ok 103 - structured diagnostics redact nested credentials, known secret values, and URL userinfo
+  ---
+  duration_ms: 1.503892
+  type: 'test'
+  ...
+# Subtest: detects configured group membership missing from the running session
+ok 104 - detects configured group membership missing from the running session
+  ---
+  duration_ms: 3.671239
+  type: 'test'
+  ...
+# Subtest: does not mistake sandbox restrictions, ACL failures, or missing account membership for stale groups
+ok 105 - does not mistake sandbox restrictions, ACL failures, or missing account membership for stale groups
+  ---
+  duration_ms: 2.146527
+  type: 'test'
+  ...
+# Subtest: only recognizes Docker access failures, not generic application permission errors
+ok 106 - only recognizes Docker access failures, not generic application permission errors
+  ---
+  duration_ms: 5.385052
+  type: 'test'
+  ...
+# Subtest: Docker preserves selected environment across all commands without requesting different credentials
+ok 107 - Docker preserves selected environment across all commands without requesting different credentials
+  ---
+  duration_ms: 10.522491
+  type: 'test'
+  ...
+# Subtest: versioned task/checkpoint round trips preserve work and never retain mutable input references
+ok 108 - versioned task/checkpoint round trips preserve work and never retain mutable input references
+  ---
+  duration_ms: 37.463931
+  type: 'test'
+  ...
+# Subtest: task schema rejects missing version with actionable safe error
+ok 109 - task schema rejects missing version with actionable safe error
+  ---
+  duration_ms: 0.617824
+  type: 'test'
+  ...
+# Subtest: task schema rejects unknown version with actionable safe error
+ok 110 - task schema rejects unknown version with actionable safe error
+  ---
+  duration_ms: 0.253504
+  type: 'test'
+  ...
+# Subtest: task schema rejects unknown field with actionable safe error
+ok 111 - task schema rejects unknown field with actionable safe error
+  ---
+  duration_ms: 0.146904
+  type: 'test'
+  ...
+# Subtest: task schema rejects empty title with actionable safe error
+ok 112 - task schema rejects empty title with actionable safe error
+  ---
+  duration_ms: 0.158572
+  type: 'test'
+  ...
+# Subtest: task schema rejects no acceptance with actionable safe error
+ok 113 - task schema rejects no acceptance with actionable safe error
+  ---
+  duration_ms: 2.977001
+  type: 'test'
+  ...
+# Subtest: task schema rejects sparse acceptance with actionable safe error
+ok 114 - task schema rejects sparse acceptance with actionable safe error
+  ---
+  duration_ms: 2.393835
+  type: 'test'
+  ...
+# Subtest: task schema rejects invalid priority with actionable safe error
+ok 115 - task schema rejects invalid priority with actionable safe error
+  ---
+  duration_ms: 2.126032
+  type: 'test'
+  ...
+# Subtest: task schema rejects nonfinite budget with actionable safe error
+ok 116 - task schema rejects nonfinite budget with actionable safe error
+  ---
+  duration_ms: 6.562138
+  type: 'test'
+  ...
+# Subtest: task schema rejects fractional attempts with actionable safe error
+ok 117 - task schema rejects fractional attempts with actionable safe error
+  ---
+  duration_ms: 1.011796
+  type: 'test'
+  ...
+# Subtest: task schema rejects zero attempts with actionable safe error
+ok 118 - task schema rejects zero attempts with actionable safe error
+  ---
+  duration_ms: 0.531531
+  type: 'test'
+  ...
+# Subtest: task schema rejects duplicate dependencies with actionable safe error
+ok 119 - task schema rejects duplicate dependencies with actionable safe error
+  ---
+  duration_ms: 0.269639
+  type: 'test'
+  ...
+# Subtest: task schema rejects self dependency with actionable safe error
+ok 120 - task schema rejects self dependency with actionable safe error
+  ---
+  duration_ms: 0.158797
+  type: 'test'
+  ...
+# Subtest: task schema rejects unsafe scope with actionable safe error
+ok 121 - task schema rejects unsafe scope with actionable safe error
+  ---
+  duration_ms: 0.201939
+  type: 'test'
+  ...
+# Subtest: task schema rejects absolute scope with actionable safe error
+ok 122 - task schema rejects absolute scope with actionable safe error
+  ---
+  duration_ms: 0.184577
+  type: 'test'
+  ...
+# Subtest: task schema rejects Windows traversal with actionable safe error
+ok 123 - task schema rejects Windows traversal with actionable safe error
+  ---
+  duration_ms: 0.167618
+  type: 'test'
+  ...
+# Subtest: task schema rejects invalid source with actionable safe error
+ok 124 - task schema rejects invalid source with actionable safe error
+  ---
+  duration_ms: 0.143365
+  type: 'test'
+  ...
+# Subtest: invalid JSON and hostile unknown keys cannot leak rejected values in diagnostics
+ok 125 - invalid JSON and hostile unknown keys cannot leak rejected values in diagnostics
+  ---
+  duration_ms: 1.727434
+  type: 'test'
+  ...
+# Subtest: portable serialization redacts known credentials including escaped values without mutating inputs
+ok 126 - portable serialization redacts known credentials including escaped values without mutating inputs
+  ---
+  duration_ms: 1.33343
+  type: 'test'
+  ...
+# Subtest: checkpoint rejects unknown version
+ok 127 - checkpoint rejects unknown version
+  ---
+  duration_ms: 0.273912
+  type: 'test'
+  ...
+# Subtest: checkpoint rejects unknown field
+ok 128 - checkpoint rejects unknown field
+  ---
+  duration_ms: 0.146142
+  type: 'test'
+  ...
+# Subtest: checkpoint rejects bad hash
+ok 129 - checkpoint rejects bad hash
+  ---
+  duration_ms: 0.187237
+  type: 'test'
+  ...
+# Subtest: checkpoint rejects prototype key
+ok 130 - checkpoint rejects prototype key
+  ---
+  duration_ms: 0.133589
+  type: 'test'
+  ...
+# Subtest: checkpoint rejects bad base
+ok 131 - checkpoint rejects bad base
+  ---
+  duration_ms: 0.142708
+  type: 'test'
+  ...
+# Subtest: checkpoint rejects relative worktree
+ok 132 - checkpoint rejects relative worktree
+  ---
+  duration_ms: 0.163339
+  type: 'test'
+  ...
+# Subtest: checkpoint rejects traversing worktree
+ok 133 - checkpoint rejects traversing worktree
+  ---
+  duration_ms: 0.148131
+  type: 'test'
+  ...
+# Subtest: checkpoint rejects traversing change
+ok 134 - checkpoint rejects traversing change
+  ---
+  duration_ms: 1.783574
+  type: 'test'
+  ...
+# Subtest: checkpoint rejects bad branch
+ok 135 - checkpoint rejects bad branch
+  ---
+  duration_ms: 0.130284
+  type: 'test'
+  ...
+# Subtest: checkpoint rejects unsafe branch
+ok 136 - checkpoint rejects unsafe branch
+  ---
+  duration_ms: 0.105472
+  type: 'test'
+  ...
+# Subtest: checkpoint rejects foreign session
+ok 137 - checkpoint rejects foreign session
+  ---
+  duration_ms: 0.092558
+  type: 'test'
+  ...
+# Subtest: checkpoint rejects invalid verification
+ok 138 - checkpoint rejects invalid verification
+  ---
+  duration_ms: 0.172008
+  type: 'test'
+  ...
+# Subtest: lifecycle scenarios cover completion, repair, waits, explicit retry and pause
+ok 139 - lifecycle scenarios cover completion, repair, waits, explicit retry and pause
+  ---
+  duration_ms: 0.488963
+  type: 'test'
+  ...
+# Subtest: completion requires verification, terminal tasks cannot reopen, cancellation covers nonterminal states
+ok 140 - completion requires verification, terminal tasks cannot reopen, cancellation covers nonterminal states
+  ---
+  duration_ms: 1.780744
+  type: 'test'
+  ...
+# Subtest: existing persisted runner transitions remain compatible and reject unknown runtime states
+ok 141 - existing persisted runner transitions remain compatible and reject unknown runtime states
+  ---
+  duration_ms: 0.385928
+  type: 'test'
+  ...
+# Subtest: classifies postgres-unavailable: DATABASE_URL PostgreSQL ECONNREFUSED 127.0.0.1:5432
+ok 142 - classifies postgres-unavailable: DATABASE_URL PostgreSQL ECONNREFUSED 127.0.0.1:5432
+  ---
+  duration_ms: 3.85507
+  type: 'test'
+  ...
+# Subtest: classifies postgres-unavailable: getaddrinfo ENOTFOUND postgres
+ok 143 - classifies postgres-unavailable: getaddrinfo ENOTFOUND postgres
+  ---
+  duration_ms: 0.723939
+  type: 'test'
+  ...
+# Subtest: classifies missing-env: ENOENT: no such file or directory, open '.env'
+ok 144 - classifies missing-env: ENOENT: no such file or directory, open '.env'
+  ---
+  duration_ms: 0.479507
+  type: 'test'
+  ...
+# Subtest: classifies missing-dependency: Cannot find package 'pg'
+ok 145 - classifies missing-dependency: Cannot find package 'pg'
+  ---
+  duration_ms: 0.870567
+  type: 'test'
+  ...
+# Subtest: classifies unknown: Cannot find module './local-code.js'
+ok 146 - classifies unknown: Cannot find module './local-code.js'
+  ---
+  duration_ms: 0.876676
+  type: 'test'
+  ...
+# Subtest: classifies unknown: Cannot find module '/app/missing.js'
+ok 147 - classifies unknown: Cannot find module '/app/missing.js'
+  ---
+  duration_ms: 0.390486
+  type: 'test'
+  ...
+# Subtest: classifies missing-api-key: PAYMENTS_API_KEY is required
+ok 148 - classifies missing-api-key: PAYMENTS_API_KEY is required
+  ---
+  duration_ms: 0.180258
+  type: 'test'
+  ...
+# Subtest: classifies mock-unavailable: fetch failed ENOTFOUND mock
+ok 149 - classifies mock-unavailable: fetch failed ENOTFOUND mock
+  ---
+  duration_ms: 0.247157
+  type: 'test'
+  ...
+# Subtest: classifies port-in-use: EADDRINUSE
+ok 150 - classifies port-in-use: EADDRINUSE
+  ---
+  duration_ms: 0.724606
+  type: 'test'
+  ...
+# Subtest: classifies browser-unavailable: Please run playwright install
+ok 151 - classifies browser-unavailable: Please run playwright install
+  ---
+  duration_ms: 1.841311
+  type: 'test'
+  ...
+# Subtest: classifies unknown: Assertion failed
+ok 152 - classifies unknown: Assertion failed
+  ---
+  duration_ms: 2.401177
+  type: 'test'
+  ...
+# Subtest: Docker sandbox has bounded resources and no host network/socket/credentials
+ok 153 - Docker sandbox has bounded resources and no host network/socket/credentials
+  ---
+  duration_ms: 58.616074
+  type: 'test'
+  ...
+# Subtest: detects explicit disposable PostgreSQL and refuses unsafe permissions
+ok 154 - detects explicit disposable PostgreSQL and refuses unsafe permissions
+  ---
+  duration_ms: 8.950471
+  type: 'test'
+  ...
+# Subtest: mock contracts cannot inject code or sensitive process settings
+ok 155 - mock contracts cannot inject code or sensitive process settings
+  ---
+  duration_ms: 1.405473
+  type: 'test'
+  ...
+# Subtest: validates DAG and schedules only after prerequisites pass
+ok 156 - validates DAG and schedules only after prerequisites pass
+  ---
+  duration_ms: 5.821703
+  type: 'test'
+  ...
+# Subtest: rejects duplicate
+ok 157 - rejects duplicate
+  ---
+  duration_ms: 0.475832
+  type: 'test'
+  ...
+# Subtest: rejects missing dependency
+ok 158 - rejects missing dependency
+  ---
+  duration_ms: 0.211553
+  type: 'test'
+  ...
+# Subtest: rejects cycle
+ok 159 - rejects cycle
+  ---
+  duration_ms: 0.191498
+  type: 'test'
+  ...
+# Subtest: rejects self cycle
+ok 160 - rejects self cycle
+  ---
+  duration_ms: 0.29415
+  type: 'test'
+  ...
+# Subtest: rejects empty acceptance
+ok 161 - rejects empty acceptance
+  ---
+  duration_ms: 0.166349
+  type: 'test'
+  ...
+# Subtest: rejects forged state
+ok 162 - rejects forged state
+  ---
+  duration_ms: 0.25267
+  type: 'test'
+  ...
+# Subtest: rejects invalid instructions
+ok 163 - rejects invalid instructions
+  ---
+  duration_ms: 0.132656
+  type: 'test'
+  ...
+# Subtest: rejects unknown scheduler dependency IDs and illegal transitions
+ok 164 - rejects unknown scheduler dependency IDs and illegal transitions
+  ---
+  duration_ms: 0.97521
+  type: 'test'
+  ...
+# Subtest: interrupted turns retain session context and require reconciliation
+ok 165 - interrupted turns retain session context and require reconciliation
+  ---
+  duration_ms: 16.807196
+  type: 'test'
+  ...
+# Subtest: does not infer workspace preparation or check success from partial output
+ok 166 - does not infer workspace preparation or check success from partial output
+  ---
+  duration_ms: 0.384886
+  type: 'test'
+  ...
+# Subtest: redacts known credential environment values and OpenAI key patterns
+ok 167 - redacts known credential environment values and OpenAI key patterns
+  ---
+  duration_ms: 19.66776
+  type: 'test'
+  ...
+# Subtest: security worker receives provider/runtime context without unrelated credentials or injection settings
+ok 168 - security worker receives provider/runtime context without unrelated credentials or injection settings
+  ---
+  duration_ms: 2.836859
+  type: 'test'
+  ...
+# Subtest: security adapter accepts valid results and forwards only normalized progress
+ok 169 - security adapter accepts valid results and forwards only normalized progress
+  ---
+  duration_ms: 10.137533
+  type: 'test'
+  ...
+# Subtest: invalid or interrupted security results cannot become passing coverage
+ok 170 - invalid or interrupted security results cannot become passing coverage
+  ---
+  duration_ms: 2.982623
+  type: 'test'
+  ...
+# Subtest: terminal output neutralizes escape sequences and backend errors stay in technical details
+ok 171 - terminal output neutralizes escape sequences and backend errors stay in technical details
+  ---
+  duration_ms: 3.873074
+  type: 'test'
+  ...
+# Subtest: unavailable security never appears as a clean scan
+ok 172 - unavailable security never appears as a clean scan
+  ---
+  duration_ms: 0.56938
+  type: 'test'
+  ...
+# Subtest: progress uses product stages and check outcomes
+ok 173 - progress uses product stages and check outcomes
+  ---
+  duration_ms: 0.479054
+  type: 'test'
+  ...
+# Subtest: task-aware criteria are conservative and cannot bypass required security/application checks
+ok 174 - task-aware criteria are conservative and cannot bypass required security/application checks
+  ---
+  duration_ms: 9.618274
+  type: 'test'
+  ...
+# Subtest: filesystem verification rejects symlink escapes and documentation checks require valid local links
+ok 175 - filesystem verification rejects symlink escapes and documentation checks require valid local links
+  ---
+  duration_ms: 20.963152
+  type: 'test'
+  ...
+# Subtest: a missing daemon is distinct from socket permission denial
+ok 176 - a missing daemon is distinct from socket permission denial
+  ---
+  duration_ms: 3.139958
+  type: 'test'
+  ...
+# Subtest: trusted syntax parsers do not inherit application preload hooks or credentials
+ok 177 - trusted syntax parsers do not inherit application preload hooks or credentials
+  ---
+  duration_ms: 0.560382
+  type: 'test'
+  ...
+1..177
+# tests 177
+# suites 0
+# pass 172
+# fail 0
+# cancelled 0
+# skipped 5
+# todo 0
+# duration_ms 14030.458524

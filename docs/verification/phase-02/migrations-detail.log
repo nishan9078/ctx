@@ -1,0 +1,54 @@
+(node:3) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+TAP version 13
+# Subtest: fresh V1 database initializes durable settings and all tables without a legacy task import
+ok 1 - fresh V1 database initializes durable settings and all tables without a legacy task import
+  ---
+  duration_ms: 22.734243
+  type: 'test'
+  ...
+# Subtest: v2 migration backs up committed WAL state and preserves legacy task/event data and APIs
+ok 2 - v2 migration backs up committed WAL state and preserves legacy task/event data and APIs
+  ---
+  duration_ms: 25.734098
+  type: 'test'
+  ...
+# Subtest: v1 legacy resource migration remains lossless on the V1 initialization path
+ok 3 - v1 legacy resource migration remains lossless on the V1 initialization path
+  ---
+  duration_ms: 10.542864
+  type: 'test'
+  ...
+# Subtest: malformed migration rolls back all schema/version/history changes and keeps a recoverable backup
+ok 4 - malformed migration rolls back all schema/version/history changes and keeps a recoverable backup
+  ---
+  duration_ms: 22.075312
+  type: 'test'
+  ...
+# Subtest: startup rejects future versions, unversioned nonempty databases, and changed migration history
+ok 5 - startup rejects future versions, unversioned nonempty databases, and changed migration history
+  ---
+  duration_ms: 13.162708
+  type: 'test'
+  ...
+# Subtest: migration refuses outstanding legacy leases instead of guessing worker liveness
+ok 6 - migration refuses outstanding legacy leases instead of guessing worker liveness
+  ---
+  duration_ms: 13.530234
+  type: 'test'
+  ...
+# Subtest: V1 schema enforces references, deduplication, one active attempt, and immutable events
+ok 7 - V1 schema enforces references, deduplication, one active attempt, and immutable events
+  ---
+  duration_ms: 6.694415
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 124.720934

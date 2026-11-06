@@ -9,3 +9,5 @@ Baseline decision: [ADR-000](docs/decisions/ADR-000-baseline.md). Commands, outc
 Current capability: a persistent, independently verified single-task runner with CLI/OpenTUI, Codex SDK integration, isolated workspaces, and bounded repair. The roadmap's unattended V1 backlog supervisor remains to be built and demonstrated.
 
 Phase 01 now adds validated V1 contracts, configuration resolution, typed command interfaces and acyclic package boundaries. See the [Phase 01 report](docs/verification/phase-01/REPORT.md), [ADR-001](docs/decisions/ADR-001-domain-contracts.md) and [package ownership](docs/architecture/package-ownership.md). Legacy task records keep their current format; Phase 02 will implement the new durable storage behavior.
+
+Phase 02 is in progress: schema-v3 initialization, automatic pre-migration database snapshots and legacy compatibility are implemented. See [storage foundation evidence](docs/verification/phase-02/storage-foundation.md) and [ADR-002](docs/decisions/ADR-002-storage-migration.md). Transactional V1 submission, artifacts and complete backup/restore remain pending.

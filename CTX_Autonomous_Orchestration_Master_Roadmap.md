@@ -1102,8 +1102,8 @@ Type contracts, validation library, config schema, error taxonomy, ADRs, unit te
 
 ### Engineering tasks
 
-- [ ] `P02-01` Implement SQLite initialization, WAL, foreign keys, busy timeout, and migration runner.
-- [ ] `P02-02` Create projects, tasks, dependencies, attempts, leases, events, outbox, inbox, approvals, checkpoints, artifacts and capacity tables.
+- [x] `P02-01` Implement SQLite initialization, WAL, foreign keys, busy timeout, and migration runner.
+- [x] `P02-02` Create projects, tasks, dependencies, attempts, leases, events, outbox, inbox, approvals, checkpoints, artifacts and capacity tables.
 - [ ] `P02-03` Build repository methods using explicit transactions, not scattered SQL in UI code.
 - [ ] `P02-04` Implement `submitTask` that atomically inserts task, dependencies, event, and acknowledgement outbox record.
 - [ ] `P02-05` Implement optimistic version checks or equivalent compare-and-swap for task updates.
@@ -1113,6 +1113,8 @@ Type contracts, validation library, config schema, error taxonomy, ADRs, unit te
 - [ ] `P02-09` Add DB backup/restore command and automatic migration backup.
 - [ ] `P02-10` Add persistence contract tests including restart, partial transaction rollback, duplicate submission, and malformed migration.
 - [ ] `P02-11` Set artifact retention and redaction defaults.
+
+**Progress record (2026-11-06):** [Storage foundation](docs/verification/phase-02/storage-foundation.md) passes its subtask checks. Full Phase 02 gate remains pending; P02-09 backup/restore is only partially implemented.
 
 ### Deliverables
 
