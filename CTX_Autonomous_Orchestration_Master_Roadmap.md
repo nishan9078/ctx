@@ -1176,16 +1176,16 @@ Deterministic scheduler, fake worker, lease/reconciliation logic, queue query AP
 
 ### Engineering tasks
 
-- [ ] `P04-01` Probe actual Codex CLI and SDK versions and authentication readiness.
-- [ ] `P04-02` Implement `CodexAdapter` with start, streamed observation, interrupt, and resume/restart semantics supported by installed SDK.
-- [ ] `P04-03` Convert streamed Codex items to canonical `WorkerEvent` values.
-- [ ] `P04-04` Store thread/session IDs and event sequence metadata for reconciliation.
-- [ ] `P04-05` Pass task packet, worktree directory, expected output format, and approval policy to Codex.
-- [ ] `P04-06` Ensure spawned processes are owned and terminate on cancellation; test abnormal child exit.
-- [ ] `P04-07` Implement safe handling for missing CLI/auth, tool errors, transient network failures, and end-of-turn statuses.
-- [ ] `P04-08` Write adapter integration tests using stubbed events, plus an optional real-credential smoke test.
-- [ ] `P04-09` Decide whether existing app-server code should be retained for rich interactive mode; do **not** add a second competing orchestration path.
-- [ ] `P04-10` Capture a complete real attempt log with token/cost data only when available; never invent usage.
+- [x] `P04-01` Probe actual Codex CLI and SDK versions and authentication readiness.
+- [x] `P04-02` Implement `CodexAdapter` with start, streamed observation, interrupt, and resume/restart semantics supported by installed SDK.
+- [x] `P04-03` Convert streamed Codex items to canonical `WorkerEvent` values.
+- [x] `P04-04` Store thread/session IDs and event sequence metadata for reconciliation.
+- [x] `P04-05` Pass task packet, worktree directory, expected output format, and approval policy to Codex.
+- [x] `P04-06` Ensure spawned processes are owned and terminate on cancellation; test abnormal child exit.
+- [x] `P04-07` Implement safe handling for missing CLI/auth, tool errors, transient network failures, and end-of-turn statuses.
+- [x] `P04-08` Write adapter integration tests using stubbed events, plus an optional real-credential smoke test.
+- [x] `P04-09` Decide whether existing app-server code should be retained for rich interactive mode; do **not** add a second competing orchestration path.
+- [x] `P04-10` Capture a complete real attempt log with token/cost data only when available; never invent usage.
 
 ### Deliverables
 
@@ -1193,11 +1193,11 @@ First real Codex task executed from durable queue, event normalization, error ma
 
 ### Exit gate
 
-- [ ] Codex edits an approved fixture repo and returns a reviewable diff.
-- [ ] CTX records start/finish/error events truthfully.
-- [ ] Killing Codex mid-run does not mark task complete.
-- [ ] Cancel leaves no unmanaged worker process.
-- [ ] Scheduler remains 100% adapter-agnostic.
+- [x] Codex edits an approved fixture repo and returns a reviewable diff.
+- [x] CTX records start/finish/error events truthfully.
+- [x] Killing Codex mid-run does not mark task complete.
+- [x] Cancel leaves no unmanaged worker process.
+- [x] Scheduler remains 100% adapter-agnostic.
 
 **Avoid:** Binding queue state to the private shape of Codex's current event stream.
 

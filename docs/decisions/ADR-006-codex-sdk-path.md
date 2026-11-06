@@ -24,3 +24,9 @@ The installed SDK publicly supports everything Phase 04 requires, verified again
 
 - One code path for queue execution, cancellation, and recovery; two process layers (scheduler process → supervised SDK subprocess → codex CLI) share one process-group ownership model.
 - When a future phase needs richer interactivity, it must reuse the adapter boundary and canonical events rather than adopt a second protocol for durable queue state.
+
+## Implementation evidence
+
+Phase 04 integration is verified against actual CLI/SDK **0.166.0** on development Node 22.22.1 and bundled Node 26.4.0. `createCodexQueueScheduler` composes the queue worker and independent verification handoff; the scheduler does not inspect provider payloads. Linux process-group ownership includes sequential IPC acknowledgements, child/descendant cleanup and an orphan-host disconnect handler. Explicit resume retains the original workspace and session in a new fenced attempt; crash recovery never automatically replays real effects.
+
+The approved real fixture smoke passed with a complete accepted raw stream, canonical events, session ID, diff and SDK-reported token counters. Monetary cost and actual model/provider identity were unavailable and remain unknown. Ordinary engineering task completion still requires Phase 06 verification; full resource/worktree ownership hardening remains Phase 05. See [Phase 04 evidence](../verification/phase-04/REPORT.md).

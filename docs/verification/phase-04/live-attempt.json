@@ -1,0 +1,528 @@
+{
+  "task": {
+    "spec": {
+      "schemaVersion": 1,
+      "id": "phase04-live",
+      "projectId": "fixture",
+      "title": "Implement phase04-live",
+      "objective": "Create result.txt containing exactly phase04-live followed by one newline. Make no other changes. Do not install packages or use network access. Return a short summary.",
+      "scope": {
+        "include": [
+          "result.txt"
+        ],
+        "exclude": []
+      },
+      "acceptance": [
+        "result.txt contains exactly phase04-live followed by one newline"
+      ],
+      "dependsOn": [],
+      "priority": "normal",
+      "risk": "medium",
+      "mode": "delegated",
+      "preferredHarness": "auto",
+      "verificationProfile": "node-api",
+      "requiresApprovalFor": [
+        "deployment",
+        "destructive_db",
+        "external_write"
+      ],
+      "maxAttempts": 1,
+      "maxWallMinutes": 2,
+      "metadata": {
+        "source": "cli"
+      }
+    },
+    "state": "blocked",
+    "revision": 6,
+    "createdAt": "2026-11-06T11:19:29.567Z",
+    "updatedAt": "2026-11-06T11:19:45.579Z",
+    "reason": "Harness turn finished; required independent engineering verification is pending. Evidence artifacts: 70448eb9-bb3a-4af5-a448-6dca47586a66, 32cb05a9-8d5d-4ae7-97eb-232aa7e9a9b3, eff75d62-42ef-449c-b85a-9929965aac7c, ad4bc7da-55d6-41b1-a9e8-7879463f2af6, bc2ffae1-2579-40c5-a999-3288bc7c2127. Task is blocked awaiting independent verification and must not be treated as completed."
+  },
+  "attempt": {
+    "id": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+    "taskId": "phase04-live",
+    "sequence": 1,
+    "taskRevision": 3,
+    "state": "completed",
+    "harnessId": "codex",
+    "providerKey": "codex/unknown",
+    "modelId": "unknown",
+    "fencingToken": 1,
+    "startedAt": "2026-11-06T11:19:29.575Z",
+    "endedAt": "2026-11-06T11:19:45.578Z"
+  },
+  "session": {
+    "externalSessionId": "01a1b095-ce23-7660-be45-baee91da91b8",
+    "externalRunId": null,
+    "version": "0.166.0"
+  },
+  "events": [
+    {
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "sequence": 1,
+      "kind": "diagnostic",
+      "type": "preflight",
+      "payload": {
+        "sdkVersion": "0.166.0",
+        "cliVersion": "codex-cli 0.166.0",
+        "cliAvailable": true,
+        "auth": "auth-file",
+        "model": "unknown",
+        "provider": "unknown",
+        "probeErrors": []
+      },
+      "deliveryId": "worker-1",
+      "createdAt": "2026-11-06T11:19:29.688Z"
+    },
+    {
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "sequence": 2,
+      "kind": "canonical",
+      "type": "started",
+      "payload": {
+        "taskId": "phase04-live",
+        "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+        "timestamp": "2026-11-06T11:19:29.766Z",
+        "type": "started",
+        "harnessId": "codex",
+        "sequence": 2
+      },
+      "deliveryId": "worker-2",
+      "createdAt": "2026-11-06T11:19:29.767Z"
+    },
+    {
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "sequence": 3,
+      "kind": "diagnostic",
+      "type": "raw",
+      "payload": {
+        "artifactId": "4238cd97-171d-43dc-aeeb-f28efc28546a",
+        "ordinal": 1
+      },
+      "deliveryId": "worker-3",
+      "createdAt": "2026-11-06T11:19:32.914Z"
+    },
+    {
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "sequence": 4,
+      "kind": "diagnostic",
+      "type": "raw",
+      "payload": {
+        "artifactId": "3dadd3ad-c4f9-4688-a10a-521542ac3b41",
+        "ordinal": 2
+      },
+      "deliveryId": "worker-4",
+      "createdAt": "2026-11-06T11:19:32.953Z"
+    },
+    {
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "sequence": 5,
+      "kind": "diagnostic",
+      "type": "turn.started",
+      "payload": {},
+      "deliveryId": "worker-5",
+      "createdAt": "2026-11-06T11:19:32.955Z"
+    },
+    {
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "sequence": 6,
+      "kind": "diagnostic",
+      "type": "raw",
+      "payload": {
+        "artifactId": "b8899968-688a-41b5-807a-ddd8be6c5e77",
+        "ordinal": 3
+      },
+      "deliveryId": "worker-6",
+      "createdAt": "2026-11-06T11:19:37.886Z"
+    },
+    {
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "sequence": 7,
+      "kind": "canonical",
+      "type": "message_delta",
+      "payload": {
+        "taskId": "phase04-live",
+        "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+        "timestamp": "2026-11-06T11:19:37.888Z",
+        "type": "message_delta",
+        "sequence": 7,
+        "text": "I’ll write the exact text to `result.txt` and verify its contents.\n"
+      },
+      "deliveryId": "worker-7",
+      "createdAt": "2026-11-06T11:19:37.889Z"
+    },
+    {
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "sequence": 8,
+      "kind": "diagnostic",
+      "type": "raw",
+      "payload": {
+        "artifactId": "04dbf453-db55-454b-9a26-59b879ab39d5",
+        "ordinal": 4
+      },
+      "deliveryId": "worker-8",
+      "createdAt": "2026-11-06T11:19:39.618Z"
+    },
+    {
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "sequence": 9,
+      "kind": "canonical",
+      "type": "tool_started",
+      "payload": {
+        "taskId": "phase04-live",
+        "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+        "timestamp": "2026-11-06T11:19:39.619Z",
+        "type": "tool_started",
+        "sequence": 9,
+        "toolId": "item_1",
+        "name": "command_execution"
+      },
+      "deliveryId": "worker-9",
+      "createdAt": "2026-11-06T11:19:39.620Z"
+    },
+    {
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "sequence": 10,
+      "kind": "diagnostic",
+      "type": "raw",
+      "payload": {
+        "artifactId": "991390df-e900-4d79-aeef-d9e902fe14a1",
+        "ordinal": 5
+      },
+      "deliveryId": "worker-10",
+      "createdAt": "2026-11-06T11:19:39.630Z"
+    },
+    {
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "sequence": 11,
+      "kind": "canonical",
+      "type": "tool_completed",
+      "payload": {
+        "taskId": "phase04-live",
+        "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+        "timestamp": "2026-11-06T11:19:39.632Z",
+        "type": "tool_completed",
+        "sequence": 11,
+        "toolId": "item_1",
+        "success": true
+      },
+      "deliveryId": "worker-11",
+      "createdAt": "2026-11-06T11:19:39.641Z"
+    },
+    {
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "sequence": 12,
+      "kind": "canonical",
+      "type": "command_executed",
+      "payload": {
+        "taskId": "phase04-live",
+        "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+        "timestamp": "2026-11-06T11:19:39.632Z",
+        "type": "command_executed",
+        "sequence": 12,
+        "command": "/usr/bin/zsh -lc \"printf 'phase04-live\\\\n' > result.txt\npython3 -c \\\"from pathlib import Path; p=Path('result.txt'); assert p.read_bytes() == b'phase04-live\\\\\\\\n'; print('Verified result.txt: exact expected bytes')\\\"\"",
+        "exitCode": 0,
+        "artifactId": "ab5fefa1-7da3-499b-b0b3-f3abe92c84be"
+      },
+      "deliveryId": "worker-12",
+      "createdAt": "2026-11-06T11:19:39.643Z"
+    },
+    {
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "sequence": 13,
+      "kind": "diagnostic",
+      "type": "raw",
+      "payload": {
+        "artifactId": "ac588444-d07d-4ed1-94da-62a77a641000",
+        "ordinal": 6
+      },
+      "deliveryId": "worker-13",
+      "createdAt": "2026-11-06T11:19:42.292Z"
+    },
+    {
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "sequence": 14,
+      "kind": "canonical",
+      "type": "message_delta",
+      "payload": {
+        "taskId": "phase04-live",
+        "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+        "timestamp": "2026-11-06T11:19:42.293Z",
+        "type": "message_delta",
+        "sequence": 14,
+        "text": "Created `result.txt` containing exactly `phase04-live` followed by one newline. Verified the exact bytes.\n\nChanged files:\n- `result.txt`"
+      },
+      "deliveryId": "worker-14",
+      "createdAt": "2026-11-06T11:19:42.294Z"
+    },
+    {
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "sequence": 15,
+      "kind": "diagnostic",
+      "type": "raw",
+      "payload": {
+        "artifactId": "63b56c2b-98dd-4a72-be50-28f616ad9ac7",
+        "ordinal": 7
+      },
+      "deliveryId": "worker-15",
+      "createdAt": "2026-11-06T11:19:42.311Z"
+    },
+    {
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "sequence": 16,
+      "kind": "canonical",
+      "type": "usage_reported",
+      "payload": {
+        "taskId": "phase04-live",
+        "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+        "timestamp": "2026-11-06T11:19:42.313Z",
+        "type": "usage_reported",
+        "sequence": 16,
+        "inputTokens": 38646,
+        "outputTokens": 136
+      },
+      "deliveryId": "worker-16",
+      "createdAt": "2026-11-06T11:19:42.314Z"
+    },
+    {
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "sequence": 17,
+      "kind": "canonical",
+      "type": "completed",
+      "payload": {
+        "taskId": "phase04-live",
+        "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+        "timestamp": "2026-11-06T11:19:45.570Z",
+        "type": "completed",
+        "summary": "Created `result.txt` containing exactly `phase04-live` followed by one newline. Verified the exact bytes.\n\nChanged files:\n- `result.txt`",
+        "artifactIds": [
+          "70448eb9-bb3a-4af5-a448-6dca47586a66",
+          "32cb05a9-8d5d-4ae7-97eb-232aa7e9a9b3",
+          "eff75d62-42ef-449c-b85a-9929965aac7c",
+          "ad4bc7da-55d6-41b1-a9e8-7879463f2af6",
+          "bc2ffae1-2579-40c5-a999-3288bc7c2127"
+        ],
+        "sequence": 17
+      },
+      "deliveryId": "worker-17",
+      "createdAt": "2026-11-06T11:19:45.571Z"
+    }
+  ],
+  "raw": [
+    {
+      "artifactId": "04dbf453-db55-454b-9a26-59b879ab39d5",
+      "sha256": "c24e4aa82f45e9afc2e8fe71a83a1cd872e6e76ccf6309103a444d95b5ce7534",
+      "event": {
+        "type": "item.started",
+        "item": {
+          "id": "item_1",
+          "type": "command_execution",
+          "command": "/usr/bin/zsh -lc \"printf 'phase04-live\\\\n' > result.txt\npython3 -c \\\"from pathlib import Path; p=Path('result.txt'); assert p.read_bytes() == b'phase04-live\\\\\\\\n'; print('Verified result.txt: exact expected bytes')\\\"\"",
+          "aggregated_output": "",
+          "exit_code": null,
+          "status": "in_progress"
+        }
+      }
+    },
+    {
+      "artifactId": "3dadd3ad-c4f9-4688-a10a-521542ac3b41",
+      "sha256": "cf515a4acc6e41e0f111f01c78b13ba4253f611de9374474864f01e69a90c08f",
+      "event": {
+        "type": "turn.started"
+      }
+    },
+    {
+      "artifactId": "4238cd97-171d-43dc-aeeb-f28efc28546a",
+      "sha256": "7b64d527aac36f25b2161eb0f834223b6de09fafa09f93c97b036764190fb0e1",
+      "event": {
+        "type": "thread.started",
+        "thread_id": "01a1b095-ce23-7660-be45-baee91da91b8"
+      }
+    },
+    {
+      "artifactId": "63b56c2b-98dd-4a72-be50-28f616ad9ac7",
+      "sha256": "95f7fbe44d87c7b6ee49fc440c90f96162d02cb62d42e17ac005d992c6c34ada",
+      "event": {
+        "type": "turn.completed",
+        "usage": {
+          "input_tokens": 38646,
+          "cached_input_tokens": 24832,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 136,
+          "reasoning_output_tokens": 0
+        }
+      }
+    },
+    {
+      "artifactId": "991390df-e900-4d79-aeef-d9e902fe14a1",
+      "sha256": "da937f299f98efc0d38101da35882f5dcdbd5cd30c7406415d25d77b102945a7",
+      "event": {
+        "type": "item.completed",
+        "item": {
+          "id": "item_1",
+          "type": "command_execution",
+          "command": "/usr/bin/zsh -lc \"printf 'phase04-live\\\\n' > result.txt\npython3 -c \\\"from pathlib import Path; p=Path('result.txt'); assert p.read_bytes() == b'phase04-live\\\\\\\\n'; print('Verified result.txt: exact expected bytes')\\\"\"",
+          "aggregated_output": "Verified result.txt: exact expected bytes\n",
+          "exit_code": 0,
+          "status": "completed"
+        }
+      }
+    },
+    {
+      "artifactId": "ac588444-d07d-4ed1-94da-62a77a641000",
+      "sha256": "e46e74c28c5dc97964ae7319ac2a6ba320ebe5aaed78be64aa329d3e3f768849",
+      "event": {
+        "type": "item.completed",
+        "item": {
+          "id": "item_2",
+          "type": "agent_message",
+          "text": "Created `result.txt` containing exactly `phase04-live` followed by one newline. Verified the exact bytes.\n\nChanged files:\n- `result.txt`"
+        }
+      }
+    },
+    {
+      "artifactId": "b8899968-688a-41b5-807a-ddd8be6c5e77",
+      "sha256": "b4652bf5983220fa9c3bb22113e527884a83ad15114f508569cee53c0c48fd7f",
+      "event": {
+        "type": "item.completed",
+        "item": {
+          "id": "item_0",
+          "type": "agent_message",
+          "text": "I’ll write the exact text to `result.txt` and verify its contents.\n"
+        }
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "04dbf453-db55-454b-9a26-59b879ab39d5",
+      "taskId": "phase04-live",
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "kind": "codex-raw-log",
+      "location": "artifacts/04dbf453-db55-454b-9a26-59b879ab39d5/content",
+      "sha256": "c24e4aa82f45e9afc2e8fe71a83a1cd872e6e76ccf6309103a444d95b5ce7534",
+      "bytes": 380,
+      "createdAt": "2026-11-06T11:19:39.607Z"
+    },
+    {
+      "id": "32cb05a9-8d5d-4ae7-97eb-232aa7e9a9b3",
+      "taskId": "phase04-live",
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "kind": "codex-task-packet",
+      "location": "artifacts/32cb05a9-8d5d-4ae7-97eb-232aa7e9a9b3/content",
+      "sha256": "d71b6214ab7b1c0f94af13c8e3539056dfae31bf19149e313bdcac84b26071ed",
+      "bytes": 785,
+      "createdAt": "2026-11-06T11:19:29.748Z"
+    },
+    {
+      "id": "3dadd3ad-c4f9-4688-a10a-521542ac3b41",
+      "taskId": "phase04-live",
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "kind": "codex-raw-log",
+      "location": "artifacts/3dadd3ad-c4f9-4688-a10a-521542ac3b41/content",
+      "sha256": "cf515a4acc6e41e0f111f01c78b13ba4253f611de9374474864f01e69a90c08f",
+      "bytes": 24,
+      "createdAt": "2026-11-06T11:19:32.944Z"
+    },
+    {
+      "id": "4238cd97-171d-43dc-aeeb-f28efc28546a",
+      "taskId": "phase04-live",
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "kind": "codex-raw-log",
+      "location": "artifacts/4238cd97-171d-43dc-aeeb-f28efc28546a/content",
+      "sha256": "7b64d527aac36f25b2161eb0f834223b6de09fafa09f93c97b036764190fb0e1",
+      "bytes": 77,
+      "createdAt": "2026-11-06T11:19:32.894Z"
+    },
+    {
+      "id": "63b56c2b-98dd-4a72-be50-28f616ad9ac7",
+      "taskId": "phase04-live",
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "kind": "codex-raw-log",
+      "location": "artifacts/63b56c2b-98dd-4a72-be50-28f616ad9ac7/content",
+      "sha256": "95f7fbe44d87c7b6ee49fc440c90f96162d02cb62d42e17ac005d992c6c34ada",
+      "bytes": 162,
+      "createdAt": "2026-11-06T11:19:42.300Z"
+    },
+    {
+      "id": "70448eb9-bb3a-4af5-a448-6dca47586a66",
+      "taskId": "phase04-live",
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "kind": "codex-workspace",
+      "location": "artifacts/70448eb9-bb3a-4af5-a448-6dca47586a66/content",
+      "sha256": "24ae8b7ffc94215026a6b7657f4ef994a9f73b2b95e621d421927cd1ad23388e",
+      "bytes": 325,
+      "createdAt": "2026-11-06T11:19:29.732Z"
+    },
+    {
+      "id": "991390df-e900-4d79-aeef-d9e902fe14a1",
+      "taskId": "phase04-live",
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "kind": "codex-raw-log",
+      "location": "artifacts/991390df-e900-4d79-aeef-d9e902fe14a1/content",
+      "sha256": "da937f299f98efc0d38101da35882f5dcdbd5cd30c7406415d25d77b102945a7",
+      "bytes": 420,
+      "createdAt": "2026-11-06T11:19:39.622Z"
+    },
+    {
+      "id": "ab5fefa1-7da3-499b-b0b3-f3abe92c84be",
+      "taskId": "phase04-live",
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "kind": "codex-command",
+      "location": "artifacts/ab5fefa1-7da3-499b-b0b3-f3abe92c84be/content",
+      "sha256": "90840d5a274b47c812f92481ac2f3f3249e2661df0e70d4f5747fd79629105dc",
+      "bytes": 330,
+      "createdAt": "2026-11-06T11:19:39.632Z"
+    },
+    {
+      "id": "ac588444-d07d-4ed1-94da-62a77a641000",
+      "taskId": "phase04-live",
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "kind": "codex-raw-log",
+      "location": "artifacts/ac588444-d07d-4ed1-94da-62a77a641000/content",
+      "sha256": "e46e74c28c5dc97964ae7319ac2a6ba320ebe5aaed78be64aa329d3e3f768849",
+      "bytes": 221,
+      "createdAt": "2026-11-06T11:19:42.275Z"
+    },
+    {
+      "id": "ad4bc7da-55d6-41b1-a9e8-7879463f2af6",
+      "taskId": "phase04-live",
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "kind": "codex-diff",
+      "location": "artifacts/ad4bc7da-55d6-41b1-a9e8-7879463f2af6/content",
+      "sha256": "6c5efd0d5a5f4a08618eba1b16d2221abe811c6e37bf456895faf72ea11c58e2",
+      "bytes": 140,
+      "createdAt": "2026-11-06T11:19:45.552Z"
+    },
+    {
+      "id": "b8899968-688a-41b5-807a-ddd8be6c5e77",
+      "taskId": "phase04-live",
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "kind": "codex-raw-log",
+      "location": "artifacts/b8899968-688a-41b5-807a-ddd8be6c5e77/content",
+      "sha256": "b4652bf5983220fa9c3bb22113e527884a83ad15114f508569cee53c0c48fd7f",
+      "bytes": 152,
+      "createdAt": "2026-11-06T11:19:37.870Z"
+    },
+    {
+      "id": "bc2ffae1-2579-40c5-a999-3288bc7c2127",
+      "taskId": "phase04-live",
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "kind": "codex-result",
+      "location": "artifacts/bc2ffae1-2579-40c5-a999-3288bc7c2127/content",
+      "sha256": "ba8c1f6071c9da43c2b6ca34c776ebecd062a360468041e87bb56c84fecb537a",
+      "bytes": 599,
+      "createdAt": "2026-11-06T11:19:45.562Z"
+    },
+    {
+      "id": "eff75d62-42ef-449c-b85a-9929965aac7c",
+      "taskId": "phase04-live",
+      "attemptId": "e7f4097c-8931-4e78-bd29-6a3e73fcd952",
+      "kind": "codex-process-result",
+      "location": "artifacts/eff75d62-42ef-449c-b85a-9929965aac7c/content",
+      "sha256": "e8eb81ca0982d4379366eeb3959d5731635ee8237d5d66eba65a4f7862245e6e",
+      "bytes": 103,
+      "createdAt": "2026-11-06T11:19:45.527Z"
+    }
+  ]
+}

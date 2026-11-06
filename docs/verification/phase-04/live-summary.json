@@ -1,0 +1,35 @@
+{
+  "root": "/home/nishan/ctx/.harness/phase04-live/7d908979-ee9b-4a2e-a98d-e26fa9ccd5ed",
+  "readiness": {
+    "sdkVersion": "0.166.0",
+    "cliVersion": "codex-cli 0.166.0",
+    "cliAvailable": true,
+    "auth": "auth-file",
+    "model": "unknown",
+    "provider": "unknown",
+    "probeErrors": []
+  },
+  "taskState": "blocked",
+  "attemptState": "completed",
+  "sessionId": "01a1b095-ce23-7660-be45-baee91da91b8",
+  "usage": {
+    "inputTokens": 38646,
+    "outputTokens": 136,
+    "extra": {
+      "cached_input_tokens": 24832,
+      "cache_write_input_tokens": 0,
+      "reasoning_output_tokens": 0
+    }
+  },
+  "model": "unknown",
+  "provider": "unknown",
+  "artifactCount": 13,
+  "eventCount": 17,
+  "worker": {
+    "pid": 108991,
+    "pgid": 108991,
+    "host": "nishan-thinkpad-t14-gen-5",
+    "identity": "pid:[4026531836]|72836d40-9922-4174-b5db-560222944f59:2986608",
+    "startedAt": "2026-11-06T11:19:29.764Z"
+  }
+}

@@ -1,0 +1,19 @@
+TAP version 13
+# (node:108946) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Live Phase 04 evidence: /home/nishan/ctx/.harness/phase04-live/7d908979-ee9b-4a2e-a98d-e26fa9ccd5ed
+# Subtest: LIVE queue: Codex edits an isolated approved fixture and preserves evidence without bypassing verification
+ok 1 - LIVE queue: Codex edits an isolated approved fixture and preserves evidence without bypassing verification
+  ---
+  duration_ms: 16172.306589
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 16320.066489
