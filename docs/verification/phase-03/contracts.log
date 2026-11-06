@@ -1,0 +1,178 @@
+TAP version 13
+# (node:65262) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: fresh V1 database initializes durable settings and all tables without a legacy task import
+ok 1 - fresh V1 database initializes durable settings and all tables without a legacy task import
+  ---
+  duration_ms: 18.228896
+  type: 'test'
+  ...
+# Subtest: v2 migration backs up committed WAL state and preserves legacy task/event data and APIs
+ok 2 - v2 migration backs up committed WAL state and preserves legacy task/event data and APIs
+  ---
+  duration_ms: 15.20993
+  type: 'test'
+  ...
+# Subtest: v1 legacy resource migration remains lossless on the V1 initialization path
+ok 3 - v1 legacy resource migration remains lossless on the V1 initialization path
+  ---
+  duration_ms: 8.089858
+  type: 'test'
+  ...
+# Subtest: malformed migration rolls back all schema/version/history changes and keeps a recoverable backup
+ok 4 - malformed migration rolls back all schema/version/history changes and keeps a recoverable backup
+  ---
+  duration_ms: 13.457242
+  type: 'test'
+  ...
+# Subtest: startup rejects future versions, unversioned nonempty databases, and changed migration history
+ok 5 - startup rejects future versions, unversioned nonempty databases, and changed migration history
+  ---
+  duration_ms: 10.676845
+  type: 'test'
+  ...
+# Subtest: migration refuses outstanding legacy leases instead of guessing worker liveness
+ok 6 - migration refuses outstanding legacy leases instead of guessing worker liveness
+  ---
+  duration_ms: 9.360881
+  type: 'test'
+  ...
+# Subtest: V1 schema enforces references, deduplication, one active attempt, and immutable events
+ok 7 - V1 schema enforces references, deduplication, one active attempt, and immutable events
+  ---
+  duration_ms: 8.01668
+  type: 'test'
+  ...
+# (node:65263) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: v3-to-v4 rebuild preserves attempt, artifact, checkpoint and session references with FK enforcement enabled
+ok 8 - v3-to-v4 rebuild preserves attempt, artifact, checkpoint and session references with FK enforcement enabled
+  ---
+  duration_ms: 18.822271
+  type: 'test'
+  ...
+# Subtest: active v3 workers and drifted v3 migration history stop upgrade without advancing schema
+ok 9 - active v3 workers and drifted v3 migration history stop upgrade without advancing schema
+  ---
+  duration_ms: 9.618509
+  type: 'test'
+  ...
+# (node:65264) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 15-task DAG completes in deterministic order with independently verified fixture evidence
+ok 10 - 15-task DAG completes in deterministic order with independently verified fixture evidence
+  ---
+  duration_ms: 258.647399
+  type: 'test'
+  ...
+# Subtest: priority selects urgent work first, independent of submission age
+ok 11 - priority selects urgent work first, independent of submission age
+  ---
+  duration_ms: 48.22086
+  type: 'test'
+  ...
+# Subtest: global and per-project slots are enforced while independent projects progress
+ok 12 - global and per-project slots are enforced while independent projects progress
+  ---
+  duration_ms: 138.415085
+  type: 'test'
+  ...
+# Subtest: failed, cancelled and incomplete prerequisites never allow dependent worker starts
+ok 13 - failed, cancelled and incomplete prerequisites never allow dependent worker starts
+  ---
+  duration_ms: 14.302765
+  type: 'test'
+  ...
+# Subtest: independent fixture verification rejects false worker success and cannot complete ordinary projects
+ok 14 - independent fixture verification rejects false worker success and cannot complete ordinary projects
+  ---
+  duration_ms: 12.384426
+  type: 'test'
+  ...
+# Subtest: global pause persists across reopen and drains current work without starting another task
+ok 15 - global pause persists across reopen and drains current work without starting another task
+  ---
+  duration_ms: 71.609972
+  type: 'test'
+  ...
+# Subtest: task pause drains a failed attempt and prevents retry until explicit revision-checked resume
+ok 16 - task pause drains a failed attempt and prevents retry until explicit revision-checked resume
+  ---
+  duration_ms: 76.466233
+  type: 'test'
+  ...
+# Subtest: cancellation propagates an abort signal and becomes terminal only after worker quiescence
+ok 17 - cancellation propagates an abort signal and becomes terminal only after worker quiescence
+  ---
+  duration_ms: 110.605736
+  type: 'test'
+  ...
+# Subtest: a worker ignoring abort retains its lease and slot until its promise actually settles
+ok 18 - a worker ignoring abort retains its lease and slot until its promise actually settles
+  ---
+  duration_ms: 163.457877
+  type: 'test'
+  ...
+# Subtest: an observation timeout leaves a live worker managed; shutdown confirms quiescence before retry
+ok 19 - an observation timeout leaves a live worker managed; shutdown confirms quiescence before retry
+  ---
+  duration_ms: 44.417536
+  type: 'test'
+  ...
+# Subtest: capacity deadlines persist across reopen without an active worker or premature retry
+ok 20 - capacity deadlines persist across reopen without an active worker or premature retry
+  ---
+  duration_ms: 273.179817
+  type: 'test'
+  ...
+# Subtest: automatic retries are bounded; explicit owner retry creates a new budget epoch and increasing fences
+ok 21 - automatic retries are bounded; explicit owner retry creates a new budget epoch and increasing fences
+  ---
+  duration_ms: 26.467641
+  type: 'test'
+  ...
+# Subtest: approval fixture releases its worker and waits without granting authority; cancellation invalidates request
+ok 22 - approval fixture releases its worker and waits without granting authority; cancellation invalidates request
+  ---
+  duration_ms: 9.759534
+  type: 'test'
+  ...
+# Subtest: expired leases are never stolen from a live owner; a fresh fence rejects old writes and artifacts
+ok 23 - expired leases are never stolen from a live owner; a fresh fence rejects old writes and artifacts
+  ---
+  duration_ms: 13.278354
+  type: 'test'
+  ...
+# Subtest: unknown/remote owner identity stays quarantined rather than assumed dead
+ok 24 - unknown/remote owner identity stays quarantined rather than assumed dead
+  ---
+  duration_ms: 7.794209
+  type: 'test'
+  ...
+# Subtest: scheduler SIGKILL recovery before-output preserves 15 tasks without duplicate visible fixture effects
+ok 25 - scheduler SIGKILL recovery before-output preserves 15 tasks without duplicate visible fixture effects
+  ---
+  duration_ms: 664.738115
+  type: 'test'
+  ...
+# Subtest: scheduler SIGKILL recovery after-receipt preserves 15 tasks without duplicate visible fixture effects
+ok 26 - scheduler SIGKILL recovery after-receipt preserves 15 tasks without duplicate visible fixture effects
+  ---
+  duration_ms: 653.483219
+  type: 'test'
+  ...
+# Subtest: four processes concurrently submit and claim under the global two-slot limit; dead claims recover safely
+ok 27 - four processes concurrently submit and claim under the global two-slot limit; dead claims recover safely
+  ---
+  duration_ms: 913.532694
+  type: 'test'
+  ...
+1..27
+# tests 27
+# suites 0
+# pass 27
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3670.064574

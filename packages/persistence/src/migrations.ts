@@ -4,14 +4,16 @@ import { chmod, lstat, mkdir, mkdtemp, open } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { schema } from './schema.js';
 import { orchestrationSchema } from './orchestration-schema.js';
+import { queueSchema } from './queue-schema.js';
 import { CtxError } from '../../shared/src/errors.js';
 
 export interface Migration { version: number; name: string; sql: string }
 export const migrations: readonly Migration[] = [
   { version: 2, name: 'legacy-runner-v2', sql: schema.replace(/^PRAGMA .*;$/gm, '') + "\nALTER TABLE resources ADD COLUMN status TEXT NOT NULL DEFAULT 'ready';\nALTER TABLE resources ADD COLUMN data TEXT NOT NULL DEFAULT '{}';" },
   { version: 3, name: 'versioned-orchestration', sql: orchestrationSchema },
+  { version: 4, name: 'durable-queue-ownership', sql: queueSchema },
 ];
-export const currentSchemaVersion = 3;
+export const currentSchemaVersion = 4;
 const checksum = (migration: Migration) => createHash('sha256').update(migration.sql).digest('hex');
 const versionOf = (db: DatabaseSync) => (db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
 export interface OpenDatabaseResult { db: DatabaseSync; migratedFrom: number; backupPath?: string }
@@ -33,6 +35,7 @@ export async function openOrchestrationDatabase(filename: string, steps: readonl
     const from = versionOf(db);
     if (from > currentSchemaVersion) throw new CtxError('UNSUPPORTED_SCHEMA', 'Database schema is newer than this CTX build');
     if ((db.prepare('PRAGMA integrity_check').get() as { integrity_check: string }).integrity_check !== 'ok') throw new CtxError('CONFLICT', 'Database integrity check failed; preserve the file for recovery');
+    if (from >= 3 && from < currentSchemaVersion) verifyMigrationHistory(db, steps, from);
     if (from === currentSchemaVersion) {
       verifyMigrationHistory(db, steps);
       return { db, migratedFrom: from };
@@ -45,12 +48,14 @@ export async function openOrchestrationDatabase(filename: string, steps: readonl
       return { db, migratedFrom: lockedVersion };
     }
     if (lockedVersion !== from) throw new CtxError('CONFLICT', 'Database version changed during migration; reopen before proceeding');
+    if (from >= 3) verifyMigrationHistory(db, steps, from);
     const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all() as { name: string }[]).map(row => row.name);
     if (from === 0 && tables.length) throw new CtxError('UNSUPPORTED_SCHEMA', 'Unversioned nonempty database requires explicit recovery');
     if (tables.includes('leases')) {
       const count = db.prepare('SELECT COUNT(*) AS count FROM leases').get() as { count: number };
       if (count.count) throw new CtxError('CONFLICT', 'Legacy worker leases exist; stop and reconcile workers before migration');
     }
+    if (tables.includes('ctx_attempts') && db.prepare("SELECT id FROM ctx_attempts WHERE state IN ('leased','running','verifying') LIMIT 1").get() || tables.includes('ctx_leases') && db.prepare('SELECT task_id FROM ctx_leases LIMIT 1').get()) throw new CtxError('CONFLICT', 'V1 workers must be stopped and reconciled before migration');
     let backupPath: string | undefined;
     if (existing || from > 0) {
       // This connection holds the writer lock. A separate read connection snapshots all committed
@@ -80,6 +85,9 @@ export async function openOrchestrationDatabase(filename: string, steps: readonl
       db.exec(`PRAGMA user_version=${step.version}`);
     }
     if ((db.prepare('PRAGMA foreign_key_check').all()).length) throw new CtxError('CONFLICT', 'Foreign-key validation failed after migration');
+    // Rebuilt parent tables retain valid references but SQLite retains deferred DROP counters.
+    // Clear those counters only after the full database FK check; enforcement stays ON.
+    db.exec('PRAGMA defer_foreign_keys=OFF');
     db.exec('COMMIT'); transaction = false;
     return { db, migratedFrom: from, backupPath };
   } catch (error) {
@@ -87,9 +95,9 @@ export async function openOrchestrationDatabase(filename: string, steps: readonl
     db.close(); throw error;
   }
 }
-export function verifyMigrationHistory(db: DatabaseSync, steps: readonly Migration[] = migrations): void {
+export function verifyMigrationHistory(db: DatabaseSync, steps: readonly Migration[] = migrations, expectedVersion = currentSchemaVersion): void {
   const rows = db.prepare('SELECT version,name,sha256 FROM ctx_schema_migrations').all() as { version: number; name: string; sha256: string }[];
-  if (!rows.some(row => row.version === currentSchemaVersion)) throw new CtxError('CONFLICT', 'Current schema lacks migration history');
+  if (!rows.some(row => row.version === expectedVersion)) throw new CtxError('CONFLICT', 'Current schema lacks migration history');
   for (const row of rows) {
     const step = steps.find(item => item.version === row.version);
     if (!step || row.name !== step.name || row.sha256 !== checksum(step)) throw new CtxError('CONFLICT', 'Applied migration differs from this build; do not modify historical migrations');

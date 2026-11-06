@@ -28,7 +28,7 @@ export class TaskStore {
     }
     this.db = new DatabaseSync(path);
     const version = this.db.prepare('PRAGMA user_version').get() as { user_version: number };
-    if (version.user_version > 3) { this.db.close(); throw new Error('Unsupported database schema version'); }
+    if (version.user_version > 4) { this.db.close(); throw new Error('Unsupported database schema version'); }
     this.db.exec(schema);
     if (version.user_version < 2) this.transaction(() => {
       if ((this.db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version >= 2) return;

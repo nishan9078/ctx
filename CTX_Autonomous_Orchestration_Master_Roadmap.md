@@ -1139,17 +1139,19 @@ Migrated SQLite DB, task store API, event history, artifact store, backup script
 
 ### Engineering tasks
 
-- [ ] `P03-01` Implement state transition engine with allowlisted transitions and transactional event writes.
-- [ ] `P03-02` Build dependency evaluator (`waiting_dependency` -> `ready` only after required dependencies complete).
-- [ ] `P03-03` Implement deterministic priority queue and configurable concurrency slots.
-- [ ] `P03-04` Add durable leases, heartbeat, expiry, fencing tokens, and atomic worker claim.
-- [ ] `P03-05` Add pause/cancel/retry semantics and cancellation propagation contract.
-- [ ] `P03-06` Implement `next_run_at` scheduling for delayed retries and capacity waits.
-- [ ] `P03-07` Introduce a **fake worker adapter** that sleeps, succeeds, fails, or requests approval based on a fixture.
-- [ ] `P03-08` Implement failure recovery: on restart, reconcile claimed tasks and reschedule safe attempts.
-- [ ] `P03-09` Add queue status API with counters for running, ready, waiting, blocked, completed.
-- [ ] `P03-10` Implement dependency-failure policy: downstream task becomes blocked/waiting with a reason rather than running incorrectly.
-- [ ] `P03-11` Add stress test for simultaneous task submissions and claims.
+- [x] `P03-01` Implement state transition engine with allowlisted transitions and transactional event writes.
+- [x] `P03-02` Build dependency evaluator (`waiting_dependency` -> `ready` only after required dependencies complete).
+- [x] `P03-03` Implement deterministic priority queue and configurable concurrency slots.
+- [x] `P03-04` Add durable leases, heartbeat, expiry, fencing tokens, and atomic worker claim.
+- [x] `P03-05` Add pause/cancel/retry semantics and cancellation propagation contract.
+- [x] `P03-06` Implement `next_run_at` scheduling for delayed retries and capacity waits.
+- [x] `P03-07` Introduce a **fake worker adapter** that sleeps, succeeds, fails, or requests approval based on a fixture.
+- [x] `P03-08` Implement failure recovery: on restart, reconcile claimed tasks and reschedule safe attempts.
+- [x] `P03-09` Add queue status API with counters for running, ready, waiting, blocked, completed.
+- [x] `P03-10` Implement dependency-failure policy: downstream task becomes blocked/waiting with a reason rather than running incorrectly.
+- [x] `P03-11` Add stress test for simultaneous task submissions and claims.
+
+**Implementation record (2026-11-06):** [Phase 03 report](docs/verification/phase-03/REPORT.md). Queue/fixture contract gate PASS; live harnesses, process supervision and real verification remain P04–P06 work.
 
 ### Deliverables
 
@@ -1157,11 +1159,11 @@ Deterministic scheduler, fake worker, lease/reconciliation logic, queue query AP
 
 ### Exit gate
 
-- [ ] 15-task DAG finishes in deterministic order with fake workers.
-- [ ] No task starts before a failed or incomplete hard dependency.
-- [ ] Forced scheduler restart does not lose or double-execute acknowledged tasks.
-- [ ] Stale lease cannot overwrite a fresh attempt (fencing test).
-- [ ] Global pause stops new task starts; already-running tasks follow defined pause policy.
+- [x] 15-task DAG finishes in deterministic order with fake workers.
+- [x] No task starts before a failed or incomplete hard dependency.
+- [x] Forced scheduler restart does not lose or double-execute acknowledged tasks.
+- [x] Stale lease cannot overwrite a fresh attempt (fencing test).
+- [x] Global pause stops new task starts; already-running tasks follow defined pause policy.
 
 **Avoid:** Using an LLM to choose which task is next.
 

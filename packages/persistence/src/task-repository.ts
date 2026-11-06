@@ -12,6 +12,7 @@ import { assertTaskTransition } from '../../shared/src/transitions.js';
 import { redactForDiagnostics } from '../../shared/src/redact.js';
 import { artifactPolicy, type ArtifactRecord } from '../../shared/src/artifacts.js';
 import { recordedManifestHash, sha256, validateArtifact, verifyArtifact } from './artifact-files.js';
+import { QueueOperations } from './queue-operations.js';
 
 interface TaskRow { id: string; project_id: string; spec_json: string; state: string; priority: string; revision: number; reason: string | null; next_run_at: string | null; created_at: string; updated_at: string }
 interface ProjectRow { id: string; canonical_path: string; policy_id: string; test_profile: string; created_at: string }
@@ -22,7 +23,11 @@ const revision = (value: unknown): number => integer(value, 1, Number.MAX_SAFE_I
 export class TaskRepository {
   readonly #db: DatabaseSync;
   readonly #env: NodeJS.ProcessEnv;
-  private constructor(db: DatabaseSync, env: NodeJS.ProcessEnv, readonly dataDirectory: string, readonly migrationBackupPath?: string) { this.#db = db; this.#env = env; }
+  readonly queue: QueueOperations;
+  private constructor(db: DatabaseSync, env: NodeJS.ProcessEnv, readonly dataDirectory: string, readonly migrationBackupPath?: string) {
+    this.#db = db; this.#env = env;
+    this.queue = new QueueOperations({ db, dataDirectory, write: work => this.write(work), read: work => this.read(work), task: id => this.task(id), project: id => this.getProject(id), actor: value => this.actor(value), safeText: (value, path) => this.safeText(value, path), event: (...args) => this.event(...args), verifyArtifact: id => this.verifyStoredArtifact(id) });
+  }
   static async open(filename: string, env: NodeJS.ProcessEnv = process.env): Promise<TaskRepository> {
     const opened = await openOrchestrationDatabase(filename);
     return new TaskRepository(opened.db, { ...env }, dirname(resolve(filename)), opened.backupPath);
@@ -225,6 +230,7 @@ export class TaskRepository {
     const manifestSha256 = sha256(JSON.stringify(manifest));
     return this.write(() => {
       this.getTask(descriptor.taskId);
+      if (descriptor.attemptId !== undefined) this.queue.assertArtifactOwner(descriptor.taskId, descriptor.attemptId);
       const existing = this.artifacts(descriptor.taskId).find(item => item.id === descriptor.id);
       if (existing) { if (JSON.stringify(existing) !== JSON.stringify(descriptor) || recordedManifestHash(this.#db, descriptor.id) !== manifestSha256) throw new CtxError('CONFLICT', 'Artifact identity is immutable'); return existing; }
       const size = this.#db.prepare('SELECT COALESCE(SUM(bytes),0) AS bytes FROM ctx_artifacts WHERE task_id=?').get(descriptor.taskId) as { bytes: number };

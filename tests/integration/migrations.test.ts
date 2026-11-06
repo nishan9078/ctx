@@ -4,7 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdtemp, readdir, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { openOrchestrationDatabase, migrations } from '../../packages/persistence/src/migrations.js';
+import { openOrchestrationDatabase, migrations, currentSchemaVersion } from '../../packages/persistence/src/migrations.js';
 import { TaskStore } from '../../packages/persistence/src/database.js';
 import type { TaskRecord } from '../../packages/persistence/src/task-record.js';
 import { CtxError } from '../../packages/shared/src/errors.js';
@@ -20,7 +20,7 @@ test('fresh V1 database initializes durable settings and all tables without a le
   try {
     const opened = await openOrchestrationDatabase(filename);
     try {
-      assert.equal(opened.migratedFrom, 0); assert.equal(opened.backupPath, undefined); assert.equal(version(opened.db), 3);
+      assert.equal(opened.migratedFrom, 0); assert.equal(opened.backupPath, undefined); assert.equal(version(opened.db), currentSchemaVersion);
       assert.equal((opened.db.prepare('PRAGMA journal_mode').get() as { journal_mode: string }).journal_mode, 'wal');
       assert.equal((opened.db.prepare('PRAGMA foreign_keys').get() as { foreign_keys: number }).foreign_keys, 1);
       assert.equal((opened.db.prepare('PRAGMA busy_timeout').get() as { timeout: number }).timeout, 5000);
@@ -31,7 +31,7 @@ test('fresh V1 database initializes durable settings and all tables without a le
       assert.equal((await stat(filename)).mode & 0o777, 0o600);
     } finally { opened.db.close(); }
     const reopened = await openOrchestrationDatabase(filename);
-    try { assert.equal(reopened.migratedFrom, 3); assert.equal(reopened.backupPath, undefined); } finally { reopened.db.close(); }
+    try { assert.equal(reopened.migratedFrom, currentSchemaVersion); assert.equal(reopened.backupPath, undefined); } finally { reopened.db.close(); }
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 test('v2 migration backs up committed WAL state and preserves legacy task/event data and APIs', async () => {
@@ -68,7 +68,7 @@ test('v1 legacy resource migration remains lossless on the V1 initialization pat
     legacy.exec("CREATE TABLE resources(task_id TEXT NOT NULL,path TEXT NOT NULL,kind TEXT NOT NULL,PRIMARY KEY(task_id,path)); INSERT INTO resources VALUES('legacy-task','/retained/workspace','workspace'); PRAGMA user_version=1;"); legacy.close();
     const opened = await openOrchestrationDatabase(filename);
     try {
-      assert.equal(version(opened.db), 3); assert.ok(opened.backupPath);
+      assert.equal(version(opened.db), currentSchemaVersion); assert.ok(opened.backupPath);
       assert.deepEqual({ ...opened.db.prepare('SELECT path,status,data FROM resources').get() }, { path: '/retained/workspace', status: 'ready', data: '{}' });
     } finally { opened.db.close(); }
   } finally { await rm(root, { recursive: true, force: true }); }
@@ -77,7 +77,7 @@ test('malformed migration rolls back all schema/version/history changes and keep
   const root = await mkdtemp(join(tmpdir(), 'ctx-bad-migrate-')); const filename = join(root, 'state.sqlite');
   const legacy = new TaskStore(filename); const task = legacyTask(root); legacy.create(task); legacy.close();
   try {
-    await assert.rejects(openOrchestrationDatabase(filename, [migrations[0], { version: 3, name: 'bad', sql: 'CREATE TABLE partial_schema(id TEXT); INVALID SQL;' }]));
+    await assert.rejects(openOrchestrationDatabase(filename, [...migrations.slice(0, -1), { version: currentSchemaVersion, name: 'bad', sql: 'CREATE TABLE partial_schema(id TEXT); INVALID SQL;' }]));
     const db = new DatabaseSync(filename);
     try {
       assert.equal(version(db), 2);
@@ -94,7 +94,7 @@ test('malformed migration rolls back all schema/version/history changes and keep
 test('startup rejects future versions, unversioned nonempty databases, and changed migration history', async () => {
   const root = await mkdtemp(join(tmpdir(), 'ctx-refuse-migrate-'));
   try {
-    for (const [name, sql] of [['future', 'PRAGMA user_version=4;'], ['unknown', 'CREATE TABLE human_data(value TEXT);']] as const) {
+    for (const [name, sql] of [['future', `PRAGMA user_version=${currentSchemaVersion + 1};`], ['unknown', 'CREATE TABLE human_data(value TEXT);']] as const) {
       const filename = join(root, name + '.sqlite'); const db = new DatabaseSync(filename); db.exec(sql); db.close();
       await assert.rejects(openOrchestrationDatabase(filename), error => error instanceof CtxError && error.code === 'UNSUPPORTED_SCHEMA');
     }
@@ -122,8 +122,8 @@ test('V1 schema enforces references, deduplication, one active attempt, and immu
     const addAttempt = db.prepare('INSERT INTO ctx_attempts(id,task_id,sequence,task_revision,state,harness_id,provider_key,model_id,fencing_token,started_at) VALUES(?,?,?,?,?,?,?,?,?,?)');
     addAttempt.run('attempt-1', 'task', 1, 1, 'running', 'codex', 'account/model', 'model', 1, now);
     assert.throws(() => addAttempt.run('attempt-2', 'task', 2, 1, 'leased', 'codex', 'account/model', 'model', 2, now), /UNIQUE/);
-    assert.throws(() => db.prepare('INSERT INTO ctx_leases VALUES(?,?,?,?,?,?)').run('task', 'attempt-1', 'owner', 2, now, now), /FOREIGN KEY/);
-    db.prepare('INSERT INTO ctx_leases VALUES(?,?,?,?,?,?)').run('task', 'attempt-1', 'owner', 1, now, now);
+    assert.throws(() => db.prepare('INSERT INTO ctx_leases(task_id,attempt_id,owner_id,fencing_token,expires_at,last_heartbeat) VALUES(?,?,?,?,?,?)').run('task', 'attempt-1', 'owner', 2, now, now), /FOREIGN KEY/);
+    db.prepare('INSERT INTO ctx_leases(task_id,attempt_id,owner_id,fencing_token,expires_at,last_heartbeat) VALUES(?,?,?,?,?,?)').run('task', 'attempt-1', 'owner', 1, now, now);
     db.prepare('INSERT INTO ctx_tasks(id,project_id,spec_json,revision,state,priority,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run('other-task', 'project', '{}', 1, 'queued', 'normal', now, now);
     assert.throws(() => db.prepare('INSERT INTO ctx_artifacts VALUES(?,?,?,?,?,?,?,?)').run('artifact', 'other-task', 'attempt-1', 'patch', 'patch.diff', 'b'.repeat(64), 10, now), /FOREIGN KEY/);
     db.prepare('INSERT INTO ctx_inbox VALUES(?,?,?,?,?)').run('cli', 'event-1', 'a'.repeat(64), 'task', now);

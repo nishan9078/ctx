@@ -3,6 +3,7 @@ import type { ErrorCode } from './errors.js';
 export const taskStates = ['draft', 'queued', 'ready', 'leased', 'running', 'verifying', 'recovering', 'waiting_capacity', 'waiting_dependency', 'waiting_approval', 'paused', 'blocked', 'completed', 'failed', 'cancelled'] as const;
 export type TaskState = typeof taskStates[number];
 export type HarnessId = 'codex' | 'opencode';
+export type WorkerKind = HarnessId | 'fixture';
 export type ApprovalAction = 'deployment' | 'destructive_db' | 'external_write' | 'payment' | 'secret_write';
 export interface TaskSpec {
   schemaVersion: 1;
@@ -32,7 +33,7 @@ export interface TaskSnapshot {
 export interface Attempt {
   id: string; taskId: string; sequence: number; taskRevision: number;
   state: 'leased' | 'running' | 'verifying' | 'completed' | 'failed' | 'interrupted' | 'cancelled';
-  harnessId: HarnessId; providerKey: string; modelId: string;
+  harnessId: WorkerKind; providerKey: string; modelId: string;
   fencingToken: number; startedAt: string; endedAt?: string; sessionId?: string;
 }
 export interface VerificationResult {

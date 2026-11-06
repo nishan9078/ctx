@@ -1,0 +1,31 @@
+✔ v3-to-v4 rebuild preserves attempt, artifact, checkpoint and session references with FK enforcement enabled (12.454019ms)
+✔ active v3 workers and drifted v3 migration history stop upgrade without advancing schema (10.32944ms)
+✔ 15-task DAG completes in deterministic order with independently verified fixture evidence (204.009325ms)
+✔ priority selects urgent work first, independent of submission age (41.901916ms)
+✔ global and per-project slots are enforced while independent projects progress (136.40599ms)
+✔ failed, cancelled and incomplete prerequisites never allow dependent worker starts (12.066992ms)
+✔ independent fixture verification rejects false worker success and cannot complete ordinary projects (10.604051ms)
+✔ global pause persists across reopen and drains current work without starting another task (67.881572ms)
+✔ task pause drains a failed attempt and prevents retry until explicit revision-checked resume (69.648929ms)
+✔ a global pause also stops worker invocation for an already-claimed but unstarted attempt (7.303905ms)
+✔ cancellation propagates an abort signal and becomes terminal only after worker quiescence (109.135817ms)
+✔ a worker ignoring abort retains its lease and slot until its promise actually settles (159.315111ms)
+✔ an observation timeout leaves a live worker managed; shutdown confirms quiescence before retry (38.129ms)
+✔ capacity deadlines persist across reopen without an active worker or premature retry (270.319161ms)
+✔ automatic retries are bounded; explicit owner retry creates a new budget epoch and increasing fences (26.867947ms)
+✔ approval fixture releases its worker and waits without granting authority; cancellation invalidates request (8.953862ms)
+✔ expired leases are never stolen from a live owner; a fresh fence rejects old writes and artifacts (9.541824ms)
+✔ unknown/remote owner identity stays quarantined rather than assumed dead (6.826126ms)
+✔ failed claim audit rolls back state, attempt and lease together (6.527839ms)
+✔ claim rechecks repository identity after readiness; interactive requests cannot be forced through a ready flag (6.969808ms)
+✔ scheduler SIGKILL recovery before-output preserves 15 tasks without duplicate visible fixture effects (550.536272ms)
+✔ scheduler SIGKILL recovery after-receipt preserves 15 tasks without duplicate visible fixture effects (564.408349ms)
+✔ four processes concurrently submit and claim under the global two-slot limit; dead claims recover safely (783.124109ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3164.407977
