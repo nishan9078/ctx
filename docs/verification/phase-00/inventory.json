@@ -1,0 +1,105 @@
+{
+  "files": {
+    "apps/cli": [
+      "apps/cli/src/doctor.ts",
+      "apps/cli/src/index.ts",
+      "apps/cli/src/terminal-engine.ts",
+      "apps/cli/src/terminal-model.ts",
+      "apps/cli/src/terminal-preferences.ts",
+      "apps/cli/src/terminal-screen.ts",
+      "apps/cli/src/terminal-surface.ts",
+      "apps/cli/src/terminal-view.ts",
+      "apps/cli/src/terminal.ts"
+    ],
+    "packages/agents": [
+      "packages/agents/src/agent-adapter.ts",
+      "packages/agents/src/codex-sdk.adapter.ts"
+    ],
+    "packages/core": [
+      "packages/core/src/apply.ts",
+      "packages/core/src/orchestrator.ts",
+      "packages/core/src/planner.ts",
+      "packages/core/src/recovery.ts",
+      "packages/core/src/scheduler.ts",
+      "packages/core/src/state-machine.ts",
+      "packages/core/src/types.ts"
+    ],
+    "packages/environment": [
+      "packages/environment/src/docker-diagnostics.ts",
+      "packages/environment/src/docker.ts",
+      "packages/environment/src/environment-manager.ts",
+      "packages/environment/src/failure-classifier.ts",
+      "packages/environment/src/git-worktree.ts",
+      "packages/environment/src/process-manager.ts",
+      "packages/environment/src/service-detector.ts",
+      "packages/environment/src/types.ts",
+      "packages/environment/src/workspace.ts"
+    ],
+    "packages/persistence": [
+      "packages/persistence/src/database.ts",
+      "packages/persistence/src/schema.ts"
+    ],
+    "packages/security": [
+      "packages/security/src/codex-security.adapter.ts",
+      "packages/security/src/security-adapter.ts",
+      "packages/security/src/worker.ts"
+    ],
+    "packages/shared": [
+      "packages/shared/src/contracts.ts",
+      "packages/shared/src/redact.ts"
+    ],
+    "packages/verification": [
+      "packages/verification/src/browser-worker.ts",
+      "packages/verification/src/checks.ts",
+      "packages/verification/src/execute-plan.ts",
+      "packages/verification/src/planner.ts",
+      "packages/verification/src/policy.ts",
+      "packages/verification/src/verifier.ts"
+    ]
+  },
+  "imports": {
+    "apps/cli": [
+      "@opentui/core",
+      "packages/agents",
+      "packages/core",
+      "packages/environment",
+      "packages/persistence",
+      "packages/security",
+      "packages/shared",
+      "packages/verification"
+    ],
+    "packages/agents": [
+      "@openai/codex-sdk"
+    ],
+    "packages/core": [
+      "packages/agents",
+      "packages/environment",
+      "packages/persistence",
+      "packages/shared",
+      "packages/verification"
+    ],
+    "packages/environment": [
+      "packages/shared"
+    ],
+    "packages/persistence": [
+      "packages/core",
+      "packages/shared"
+    ],
+    "packages/security": [
+      "@openai/codex-security",
+      "packages/environment",
+      "packages/shared"
+    ],
+    "packages/shared": [
+      "packages/verification"
+    ],
+    "packages/verification": [
+      "packages/environment",
+      "packages/shared",
+      "parse5",
+      "playwright-core",
+      "typescript"
+    ]
+  },
+  "note": "Static imports including type-only and dynamic import types; edges are source dependencies, not necessarily runtime cycles."
+}

@@ -1,0 +1,6 @@
+Scope: all 9 workspace projects
+Error: ERR_PNPM_STORE_DIR_OPEN_OPERATION_LOCK
+
+  × installing dependencies
+  ╰─▶ Failed to open the store operation lock at "pnpm-store-operation-locks":
+      Read-only file system (os error 30)

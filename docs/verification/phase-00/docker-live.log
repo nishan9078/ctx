@@ -1,0 +1,44 @@
+$ pnpm build && HARNESS_DOCKER=1 node --test dist/tests/integration/docker-live.test.js
+$ tsc
+TAP version 13
+# (node:21328) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Docker acceptance evidence: /home/nishan/ctx/.harness/docker-live/c853a3d3-d572-4c5d-bab8-cb5a0e89de95
+# Subtest: LIVE DOCKER: initially unavailable DB recovers using real disposable PostgreSQL, migrates, and passes tests
+not ok 1 - LIVE DOCKER: initially unavailable DB recovers using real disposable PostgreSQL, migrates, and passes tests
+  ---
+  duration_ms: 266.853222
+  type: 'test'
+  location: '/home/nishan/ctx/dist/tests/integration/docker-live.test.js:7:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    DockerEnvironmentError: Docker image postgres:16-bookworm unavailable. []
+    Error response from daemon: No such image: postgres:16-bookworm
+
+    Preload postgres:16-bookworm with an approved docker pull, or explicitly enable --allow-image-pull. No image was downloaded.
+    Evidence: /home/nishan/ctx/.harness/docker-live/c853a3d3-d572-4c5d-bab8-cb5a0e89de95
+    + actual - expected
+
+    + 'blocked'
+    - 'completed'
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'completed'
+  actual: 'blocked'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/nishan/ctx/dist/tests/integration/docker-live.test.js:13:12)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 762.50314
+[ELIFECYCLE] Command failed with exit code 1.

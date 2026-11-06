@@ -1,25 +1,8 @@
 import { readdir, readFile, lstat } from 'node:fs/promises';
 import { join, extname } from 'node:path';
 import { createVerificationPolicy, type AcceptanceCriterion, type CheckName } from './policy.js';
-export type ProjectKind = 'static-html' | 'javascript' | 'typescript' | 'backend' | 'documentation' | 'filesystem' | 'mixed' | 'unknown';
-export type Requirement = 'mandatory' | 'optional' | 'not-applicable';
-export interface PlannedCheck {
-  id: string;
-  kind: 'command' | 'acceptance' | 'artifacts' | 'syntax' | 'documentation' | 'browser';
-  requirement: Requirement;
-  reason: string;
-  command?: string;
-  paths: string[];
-  absentPaths?: string[];
-}
-export interface VerificationPlan {
-  version: 1;
-  phase: 'initial' | 'resolved';
-  projects: ProjectKind[];
-  checks: PlannedCheck[];
-  changedFiles: string[];
-  limitations: string[];
-}
+import type { ProjectKind, Requirement, PlannedCheck, VerificationPlan } from '../../shared/src/verification.js';
+export type { ProjectKind, Requirement, PlannedCheck, VerificationPlan } from '../../shared/src/verification.js';
 const ignored = new Set(['.git', '.harness', 'node_modules', 'dist', 'build', '.next', 'coverage', '.venv', 'vendor']);
 export async function projectFiles(root: string): Promise<string[]> {
   const paths: string[] = [];

@@ -14,6 +14,7 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "check:boundaries": "node scripts/check-package-boundaries.mjs",
     "test": "pnpm build && node --test dist/tests/unit/*.test.js dist/tests/integration/*.test.js",
     "harness": "tsx apps/cli/src/index.ts",
     "ctx": "pnpm build && node scripts/start-ctx.mjs",
@@ -33,7 +34,7 @@
     "typescript": "5.9.3"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "tsx": "^4.20.0"
+    "@types/node": "22.20.5",
+    "tsx": "4.23.15"
   }
 }

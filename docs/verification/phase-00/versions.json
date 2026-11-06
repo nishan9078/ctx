@@ -1,0 +1,85 @@
+[
+  {
+    "command": [
+      "node",
+      "--version"
+    ],
+    "exitCode": 0,
+    "stdout": "v22.22.1\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "pnpm",
+      "--version"
+    ],
+    "exitCode": 0,
+    "stdout": "12.16.1\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "codex",
+      "--version"
+    ],
+    "exitCode": 0,
+    "stdout": "codex-cli 0.166.0\n",
+    "stderr": "WARNING: proceeding, even though we could not create PATH aliases: Read-only file system (os error 30)\n"
+  },
+  {
+    "command": [
+      "docker",
+      "--version"
+    ],
+    "exitCode": 0,
+    "stdout": "Docker version 29.9.2, build a82e528\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "git",
+      "--version"
+    ],
+    "exitCode": 0,
+    "stdout": "git version 2.53.0\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "uname",
+      "-sr"
+    ],
+    "exitCode": 0,
+    "stdout": "Linux 7.0.0-42-generic\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "releases/ctx-linux-x64/runtime/bin/node",
+      "--version"
+    ],
+    "exitCode": 0,
+    "stdout": "v26.4.0\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "node",
+      "-e",
+      "const{DatabaseSync}=require(\"node:sqlite\");const db=new DatabaseSync(\":memory:\");console.log(db.prepare(\"select sqlite_version() as version\").get());db.close()"
+    ],
+    "exitCode": 0,
+    "stdout": "[Object: null prototype] { version: '3.46.1' }\n",
+    "stderr": "(node:48) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+  },
+  {
+    "command": [
+      "node",
+      "-e",
+      "for(const p of [\"@openai/codex-sdk\",\"@openai/codex-security\",\"@opentui/core\",\"typescript\",\"@types/node\",\"tsx\"])console.log(p,require(\"./node_modules/\"+p+\"/package.json\").version)"
+    ],
+    "exitCode": 0,
+    "stdout": "@openai/codex-sdk 0.166.0\n@openai/codex-security 0.8.3\n@opentui/core 0.8.2\ntypescript 5.9.3\n@types/node 22.20.5\ntsx 4.23.15\n",
+    "stderr": ""
+  }
+]

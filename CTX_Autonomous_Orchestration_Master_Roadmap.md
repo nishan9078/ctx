@@ -1033,16 +1033,18 @@ Build a stable command API first; CLI and OpenTUI should call it. Preserve curre
 
 ### Engineering tasks
 
-- [ ] `P00-01` Inventory packages, commands, CLI entrypoints, TUI components, databases, job executors, Codex integration, security modules, and tests.
-- [ ] `P00-02` Draw the actual current dependency graph. Identify duplicate task state or blocking synchronous calls.
-- [ ] `P00-03` Run `pnpm install`, typecheck/build, unit tests, and available integration tests **without destructive actions**. Record exact failures.
-- [ ] `P00-04` Inspect existing Docker live-test error path; distinguish test infrastructure failure from product failure. Do not automatically require Docker to run every normal test.
-- [ ] `P00-05` Record tool versions: Node, pnpm, Codex CLI/SDK, OpenCode, OpenTUI, Docker, Git, SQLite, Linux.
-- [ ] `P00-06` Identify current security-scanner integration: whether Codex Security SDK is available, mocked, or incomplete.
-- [ ] `P00-07` Write a change map: **retain / refactor / replace / defer** for each existing package.
-- [ ] `P00-08` Create a Git checkpoint branch/tag. Preserve user changes and existing build artifacts.
-- [ ] `P00-09` Create `docs/architecture/current-state.md` and `docs/decisions/ADR-000-baseline.md`.
-- [ ] `P00-10` Decide supported Node version and pin dependencies for the first implementation cycle.
+- [x] `P00-01` Inventory packages, commands, CLI entrypoints, TUI components, databases, job executors, Codex integration, security modules, and tests.
+- [x] `P00-02` Draw the actual current dependency graph. Identify duplicate task state or blocking synchronous calls.
+- [x] `P00-03` Run `pnpm install`, typecheck/build, unit tests, and available integration tests **without destructive actions**. Record exact failures.
+- [x] `P00-04` Inspect existing Docker live-test error path; distinguish test infrastructure failure from product failure. Do not automatically require Docker to run every normal test.
+- [x] `P00-05` Record tool versions: Node, pnpm, Codex CLI/SDK, OpenCode, OpenTUI, Docker, Git, SQLite, Linux.
+- [x] `P00-06` Identify current security-scanner integration: whether Codex Security SDK is available, mocked, or incomplete.
+- [x] `P00-07` Write a change map: **retain / refactor / replace / defer** for each existing package.
+- [x] `P00-08` Create a Git checkpoint branch/tag. Preserve user changes and existing build artifacts.
+- [x] `P00-09` Create `docs/architecture/current-state.md` and `docs/decisions/ADR-000-baseline.md`.
+- [x] `P00-10` Decide supported Node version and pin dependencies for the first implementation cycle.
+
+**Audit record (2026-11-06):** [Phase 00 report](docs/verification/phase-00/REPORT.md). Gate PASS with optional Docker fixture prerequisite P00-ENV-01; later phases remain unverified.
 
 ### Deliverables
 
@@ -1050,10 +1052,10 @@ Build a stable command API first; CLI and OpenTUI should call it. Preserve curre
 
 ### Exit gate
 
-- [ ] Reproducible baseline build/test commands documented.
-- [ ] Known broken tests classified (not silently deleted).
-- [ ] Existing functionality and dirty working-tree changes preserved.
-- [ ] Phase 1 can be implemented without guessing repo structure.
+- [x] Reproducible baseline build/test commands documented.
+- [x] Known broken tests classified (not silently deleted).
+- [x] Existing functionality and dirty working-tree changes preserved.
+- [x] Phase 1 can be implemented without guessing repo structure.
 
 **Failure policy:** If baseline cannot build, stabilize the minimum build path before adding new subsystems. A documented failing optional Docker test is acceptable only if ordinary unit/build tests are usable and the failure has an explicit remediation ticket.
 
@@ -1066,15 +1068,17 @@ Build a stable command API first; CLI and OpenTUI should call it. Preserve curre
 
 ### Engineering tasks
 
-- [ ] `P01-01` Introduce `TaskSpec`, `TaskState`, `Attempt`, `WorkerEvent`, `VerificationResult`, `CapacityState`, `ApprovalRequest`, `Notification` domain types.
-- [ ] `P01-02` Implement runtime schema validation and versioned JSON serialization for task input/checkpoints.
-- [ ] `P01-03` Establish package ownership (`core`, `scheduler`, `persistence`, `adapters`, `runtime`, `verification`, `integrations`, `cli`).
-- [ ] `P01-04` Define explicit state transition table and invalid-transition errors.
-- [ ] `P01-05` Implement typed command bus interfaces: `submit`, `cancel`, `pause`, `resume`, `approve`, `retry`, `query`.
-- [ ] `P01-06` Add project configuration resolver with environment override rules and secret redaction.
-- [ ] `P01-07` Add structured error classes and shared error codes (`RATE_LIMIT`, `BUILD_FAILED`, `UNAUTHORIZED`, etc.).
-- [ ] `P01-08` Document ADRs including SQLite, per-task worktrees, SDK-first Codex, and non-LLM Sentinel.
-- [ ] `P01-09` Add test fixtures for valid/invalid task specs and transition cases.
+- [x] `P01-01` Introduce `TaskSpec`, `TaskState`, `Attempt`, `WorkerEvent`, `VerificationResult`, `CapacityState`, `ApprovalRequest`, `Notification` domain types.
+- [x] `P01-02` Implement runtime schema validation and versioned JSON serialization for task input/checkpoints.
+- [x] `P01-03` Establish package ownership (`core`, `scheduler`, `persistence`, `adapters`, `runtime`, `verification`, `integrations`, `cli`).
+- [x] `P01-04` Define explicit state transition table and invalid-transition errors.
+- [x] `P01-05` Implement typed command bus interfaces: `submit`, `cancel`, `pause`, `resume`, `approve`, `retry`, `query`.
+- [x] `P01-06` Add project configuration resolver with environment override rules and secret redaction.
+- [x] `P01-07` Add structured error classes and shared error codes (`RATE_LIMIT`, `BUILD_FAILED`, `UNAUTHORIZED`, etc.).
+- [x] `P01-08` Document ADRs including SQLite, per-task worktrees, SDK-first Codex, and non-LLM Sentinel.
+- [x] `P01-09` Add test fixtures for valid/invalid task specs and transition cases.
+
+**Implementation record (2026-11-06):** [Phase 01 report](docs/verification/phase-01/REPORT.md). Contract gate PASS; storage/queue/daemon behavior remains in later phases.
 
 ### Deliverables
 
@@ -1082,10 +1086,10 @@ Type contracts, validation library, config schema, error taxonomy, ADRs, unit te
 
 ### Exit gate
 
-- [ ] Invalid state transitions rejected.
-- [ ] Unknown/malformed task schema rejected with actionable errors.
-- [ ] All public types build in strict TypeScript mode.
-- [ ] No package dependency cycles introduced.
+- [x] Invalid state transitions rejected.
+- [x] Unknown/malformed task schema rejected with actionable errors.
+- [x] All public types build in strict TypeScript mode.
+- [x] No package dependency cycles introduced.
 
 **Avoid:** Rewriting the entire CLI yet. Get contracts stable first.
 

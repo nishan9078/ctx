@@ -3,8 +3,8 @@ import { hostname } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { schema } from './schema.js';
 import { redact } from '../../shared/src/redact.js';
-import { assertTransition, assertStepTransition } from '../../core/src/state-machine.js';
-import type { TaskRecord } from '../../core/src/types.js';
+import { assertTransition, assertStepTransition } from '../../shared/src/legacy-transitions.js';
+import type { TaskRecord } from './task-record.js';
 export interface StoredEvent { sequence: number; timestamp: string; type: string; data: unknown }
 export class TaskStore {
   readonly db: DatabaseSync;

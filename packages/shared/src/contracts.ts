@@ -1,6 +1,6 @@
 export interface CheckResult {
   name: string;
-  requirement?: import('../../verification/src/planner.js').Requirement;
+  requirement?: import('./verification.js').Requirement;
   reason?: string; limitations?: string[];
   command: string;
   status: 'passed' | 'failed' | 'unavailable' | 'cancelled' | 'not-applicable';
@@ -15,7 +15,7 @@ export interface Report {
   workspacePath?: string;
   outcome: 'completed' | 'blocked' | 'failed' | 'cancelled';
   implemented: { summary: string; diff: string; hasChanges: boolean };
-  verificationPlan?: import('../../verification/src/planner.js').VerificationPlan;
+  verificationPlan?: import('./verification.js').VerificationPlan;
   verification: CheckResult[];
   security: { status: 'unavailable'; coverage: string[] };
   environment: { dependencies: string; resources: string[]; execution?: 'docker' | 'host' | 'filesystem'; recoveries?: { kind: string; status: string; artifact: string }[]; cleanupErrors?: string[]; diagnostic?: { kind: string; recommendation: string; artifact?: string } };
