@@ -1,17 +1,21 @@
+import { createApplyManifest } from './apply.js';
+import { initialVerification, planVerification, commandChecksRequired } from '../../verification/src/planner.js';
+import { requiredChecksPass, missingRequired } from '../../verification/src/execute-plan.js';
 import { EnvironmentManager, createEnvironmentState } from '../../environment/src/environment-manager.js';
-import { DockerAccessError } from '../../environment/src/docker-diagnostics.js';
+import { DockerEnvironmentError } from '../../environment/src/docker-diagnostics.js';
 import { detectEnvironment } from '../../environment/src/service-detector.js';
 import { EnvironmentUnavailable, type DockerDriver, type EnvironmentOptions } from '../../environment/src/types.js';
 import { redact } from '../../shared/src/redact.js';
 import { randomUUID, createHash } from 'node:crypto';
 import { mkdir, writeFile, readFile, rename, realpath, access } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { AgentAdapter, AgentResult } from '../../agents/src/agent-adapter.js';
 import type { Report } from '../../shared/src/contracts.js';
 import type { TaskRecord, TaskStatus, Attempt } from './types.js';
-import { prepareWorkspace, captureDiff } from '../../environment/src/workspace.js';
+import { prepareWorkspace, captureDiff, changedPaths } from '../../environment/src/workspace.js';
+import { type AcceptanceCriterion } from '../../verification/src/policy.js';
 import { discoverCommands, verify } from '../../verification/src/verifier.js';
 import { TaskStore } from '../../persistence/src/database.js';
 import { createPlan, validatePlan } from './planner.js';
@@ -20,7 +24,7 @@ import { recoveryProblem } from './recovery.js';
 import { terminal } from './state-machine.js';
 export interface RunInput {
   request: string; repositoryPath: string; outputDirectory?: string;
-  build?: string; test?: string; signal?: AbortSignal; timeoutMs?: number;
+  build?: string; test?: string; typecheck?: string; security?: string; browser?: string; acceptance?: AcceptanceCriterion[]; signal?: AbortSignal; timeoutMs?: number;
   plan?: unknown; maxRepairAttempts?: number; model?: string;
   leaseDurationMs?: number; environment?: EnvironmentOptions;
 }
@@ -33,16 +37,19 @@ export async function runTask(input: RunInput, agent: AgentAdapter, dependencies
   if (!Number.isInteger(maxRepairAttempts) || maxRepairAttempts < 0 || maxRepairAttempts > 10) throw new Error('Repair budget must be an integer from 0 to 10');
   const plan = input.plan === undefined ? createPlan(redact(input.request)) : validatePlan(JSON.parse(redact(JSON.stringify(input.plan))));
   const repositoryPath = await realpath(input.repositoryPath);
+  try { if (JSON.parse(await readFile(join(repositoryPath, 'release-manifest.json'), 'utf8')).product === 'ctx') throw new Error('Target is a CTX release bundle. Select your project with --repo or /repo; no execution started.'); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error; }
   const root = resolve(input.outputDirectory ?? join(repositoryPath, '.harness'));
   await mkdir(root, { recursive: true });
   const id = randomUUID(); const directory = join(root, id); const now = new Date().toISOString();
   const commands = await discoverCommands(repositoryPath, input);
-  const config = await detectEnvironment(repositoryPath, input.environment);
+  const verificationPolicy = await initialVerification(repositoryPath, input.request, commands, input.acceptance, (['build', 'test', 'typecheck', 'security', 'browser'] as const).filter(name => input[name] !== undefined));
+  const lightweight = !commandChecksRequired(verificationPolicy.plan!);
+  const config = await detectEnvironment(repositoryPath, { ...input.environment, lightweight, ...(lightweight && input.environment?.services === undefined ? { services: { postgres: false, mock: undefined } } : {}) });
   const store = new TaskStore(databasePath(root));
   try {
     store.create({ id, request: redact(input.request), repositoryPath, directory,
       workspacePath: join(tmpdir(), `harness-${id}`, 'workspace'), status: 'queued', createdAt: now, updatedAt: now,
-      plan, commands, prepared: false, environment: createEnvironmentState(id, config), maxRepairAttempts, remainingRepairAttempts: maxRepairAttempts,
+      plan, commands, verificationPolicy, prepared: false, environment: createEnvironmentState(id, config), maxRepairAttempts, remainingRepairAttempts: maxRepairAttempts,
       attempts: [], verification: [], timeoutMs, elapsedMs: 0, model: input.model });
   } finally { store.close(); }
   return executeTask({ id, outputDirectory: root, signal: input.signal, leaseDurationMs: input.leaseDurationMs }, agent, false, dependencies);
@@ -128,7 +135,7 @@ async function executeTask(input: ResumeInput, agent: AgentAdapter, recovering: 
       await prepareWorkspace(task.repositoryPath, task.workspacePath);
       update('workspace.prepared', { path: task.workspacePath }, current => { current.prepared = true; });
     }
-    if (!terminal(task.status) && environment) await environment.prepare(controller.signal);
+    if (!terminal(task.status) && environment) { update('environment.setup.started', { mode: task.environment!.config.mode }); await environment.prepare(controller.signal); update('environment.setup.completed', { mode: task.environment!.selectedMode ?? task.environment!.config.mode }); }
     if (task.status === 'preparing') transition('executing');
     while (!terminal(task.status)) {
       if (controller.signal.aborted) { transition(input.signal?.aborted ? 'cancelled' : 'failed', current => { current.error = 'Task cancelled or timed out'; }); break; }
@@ -139,9 +146,14 @@ async function executeTask(input: ResumeInput, agent: AgentAdapter, recovering: 
           const previous = task.attempts.findLast(item => item.stepId === step.id);
           const attempt: Attempt = { id: randomUUID(), stepId: step.id, idempotencyKey: `${task.id}:${task.plan.version}:${step.id}:${task.attempts.length}`, status: 'running', startedAt: new Date().toISOString(), sessionId: previous?.sessionId };
           update('attempt.intent', { attemptId: attempt.id, idempotencyKey: attempt.idempotencyKey, stepId: step.id }, current => { current.attempts.push(attempt); current.plan.steps.find(item => item.id === step.id)!.status = 'running'; });
+          update('codex.execution.requested', { attemptId: attempt.id, sandbox: 'workspace-write', network: false });
           const result = await agent.execute({ workspacePath: task.workspacePath, sessionId: attempt.sessionId, signal: controller.signal,
-            prompt: `Implement this task step in the current workspace.\nRequest: ${task.request}\nStep: ${step.title}\n${step.instructions}\nAcceptance criteria: ${JSON.stringify(step.acceptanceCriteria)}\nVerification: ${JSON.stringify(task.commands)}\n${task.error ? `Repair the concrete verification failures: ${task.error}` : ''}\nThe harness performs independent verification using its configured execution backend. Do not change application behavior to hide unavailable services, dependencies, or credentials; report those failures for deterministic environment recovery. Preserve existing work. Do not deploy, contact external services, use credentials, modify files outside the workspace, commit, or change Git metadata. Summarize changes and limitations.`,
+            prompt: `Implement this task step in the current workspace.\nRequest: ${task.request}\nStep: ${step.title}\n${step.instructions}\nAcceptance criteria: ${JSON.stringify(step.acceptanceCriteria)}\nVerification commands required for this task: ${JSON.stringify(Object.fromEntries(Object.entries(task.commands).filter(([name]) => !task.verificationPolicy || task.verificationPolicy.required.includes(name as import('../../verification/src/policy.js').CheckName))))}\nRequired independent acceptance (including exact paths/content): ${JSON.stringify(task.verificationPolicy ?? "legacy build/test")}\n${task.error ? `Repair the concrete verification failures: ${task.error}` : ''}\nThe harness performs independent verification using its configured execution backend. For filesystem-only acceptance with no required commands, create the requested paths/content and do not run unrelated application build/test commands. Do not change application behavior to hide unavailable services, dependencies, or credentials; report those failures for deterministic environment recovery. Preserve existing work. Do not deploy, contact external services, use credentials, modify files outside the workspace, commit, or change Git metadata. Summarize changes and limitations.`,
             onEvent: async item => {
+              const payload = item.data as { item?: { type?: string; id?: string; status?: string }; thread_id?: string } | null;
+              const tool = payload?.item && !['agent_message', 'reasoning', 'todo_list'].includes(payload.item.type ?? '');
+              const lifecycle = item.type === 'thread.started' ? 'codex.session.started' : item.type === 'turn.started' ? 'codex.turn.started' : item.type === 'turn.completed' ? 'codex.turn.completed' : item.type === 'turn.failed' || item.type === 'error' ? 'codex.turn.failed' : tool && item.type === 'item.started' ? 'codex.tool.started' : tool && item.type === 'item.completed' ? 'codex.tool.completed' : undefined;
+              if (lifecycle) update(lifecycle, item.data);
               update(`agent.${item.type}`, item.data, current => {
                 const active = current.attempts.find(value => value.id === attempt.id)!;
                 const data = item.data as { thread_id?: unknown; item?: { type?: string; text?: unknown }; usage?: Record<string, number>; error?: { message?: string }; message?: string } | null;
@@ -172,23 +184,39 @@ async function executeTask(input: ResumeInput, agent: AgentAdapter, recovering: 
         const round = task.environment?.verificationRound ?? task.maxRepairAttempts - task.remainingRepairAttempts;
         const verificationDirectory = round === 0 ? task.directory : join(task.directory, `verification-${round}`);
         await mkdir(verificationDirectory, { recursive: true });
+        if (task.verificationPolicy?.plan) {
+          await captureDiff(task.workspacePath); const changed = await changedPaths(task.workspacePath);
+          const resolvedPlan = await planVerification({ root: task.workspacePath, request: task.request, commands: task.commands,
+            forced: task.verificationPolicy.plan.checks.filter(check => check.requirement === 'mandatory' && (check.kind === 'command' || check.kind === 'browser')).map(check => check.id as import('../../verification/src/policy.js').CheckName),
+            criteria: task.verificationPolicy.criteria, changedFiles: changed.paths, deletedFiles: changed.deleted, initial: task.verificationPlan ?? task.verificationPolicy.plan });
+          update('verification.plan.resolved', resolvedPlan, current => { current.verificationPlan = resolvedPlan; });
+          const planPath = join(verificationDirectory, 'verification-plan.json'); await atomicWrite(planPath, JSON.stringify(resolvedPlan, null, 2) + '\n'); store.artifact(task.id, owner, planPath, sha(readFileSync(planPath)), 'verification-plan');
+          if (commandChecksRequired(resolvedPlan)) await environment?.ensureCommandBackend(controller.signal);
+        }
+        update('verification.started', { policy: task.verificationPlan ?? task.verificationPolicy ?? 'legacy build/test', round });
         await verify(task.workspacePath, verificationDirectory, task.commands, controller.signal, task.timeoutMs, {
           existing: task.verification,
           before: name => update('verification.intent', { name }, current => { current.activeCheck = name; }),
           after: check => {
             store.artifact(task.id, owner, check.artifact, sha(readFileSync(check.artifact)), check.name);
-            update('verification.result', check, current => { current.verification.push(check); delete current.activeCheck; });
+            update('verification.result', check, current => { current.verification.push(check); const planned = current.verificationPlan?.checks.find(item => item.id === check.name); if (planned && check.requirement === 'mandatory') { planned.requirement = 'mandatory'; planned.reason = check.reason ?? planned.reason; } delete current.activeCheck; });
           },
-        }, environment);
+        }, environment, task.verificationPlan && task.verificationPolicy ? { ...task.verificationPolicy, plan: task.verificationPlan } : task.verificationPolicy);
+        if (task.verificationPlan) { const planPath = join(verificationDirectory, 'verification-plan.json'); await atomicWrite(planPath, JSON.stringify(task.verificationPlan, null, 2) + '\n'); store.artifact(task.id, owner, planPath, sha(readFileSync(planPath)), 'verification-plan'); }
+        update('verification.completed', { checks: task.verification.map(check => ({ name: check.name, status: check.status })) });
         if (controller.signal.aborted) { transition(input.signal?.aborted ? 'cancelled' : 'failed', current => { current.error = 'Task cancelled or timed out'; }); continue; }
-        if (task.verification.every(check => check.status === 'passed')) {
+        if (requiredChecksPass(task.verification)) {
           const diff = await captureDiff(task.workspacePath);
           controller.signal.throwIfAborted();
           const path = join(task.directory, 'changes.diff');
           await atomicWrite(path, diff); store.artifact(task.id, owner, path, sha(diff), 'diff');
+          const manifestPath = join(task.directory, 'apply-manifest.json');
+          await atomicWrite(manifestPath, JSON.stringify(await createApplyManifest(task, task.verificationPolicy?.criteria ?? [], task.verificationPlan?.checks.filter(check => check.requirement === 'mandatory' && check.kind !== 'command').flatMap(check => check.paths) ?? []), null, 2) + '\n');
+          store.artifact(task.id, owner, manifestPath, sha(readFileSync(manifestPath)), 'apply-manifest');
+          update('apply.manifest.verified', { path: manifestPath }, current => { current.applyManifest = manifestPath; });
           transition('completed');
         }
-        else if (task.verification.some(check => check.status === 'unavailable')) transition('blocked', current => { current.error = 'Required verification command unavailable'; });
+        else if (missingRequired(task.verification).length > 0) transition('blocked', current => { current.error = `Required verification checks unavailable: ${missingRequired(current.verification).map(check => check.name).join(', ')}. Configure the matching --test, --build, --typecheck, --security-check or --browser-check command. Required checks were not skipped.`; });
         else {
           const recovery = await environment?.recover(task.verification, controller.signal) ?? 'not-applicable';
           controller.signal.throwIfAborted();
@@ -198,7 +226,7 @@ async function executeTask(input: ResumeInput, agent: AgentAdapter, recovering: 
           }
           if (recovery === 'blocked') { transition('blocked', current => { current.error = current.environment?.limitations.at(-1) ?? 'Environment recovery could not be verified'; }); continue; }
           if (task.remainingRepairAttempts > 0) {
-            const evidence = task.verification.filter(check => check.status !== 'passed').map(check => `${check.name}: ${check.command}, exit ${check.exitCode}\n${redact(readFileSync(check.artifact, 'utf8')).slice(-20_000)}`).join('\n');
+            const evidence = task.verification.filter(check => check.status === 'failed' || check.status === 'unavailable' && (check.requirement ?? 'mandatory') === 'mandatory').map(check => `${check.name}: ${check.command}, exit ${check.exitCode}\n${redact(readFileSync(check.artifact, 'utf8')).slice(-20_000)}`).join('\n');
             if (evidence === task.error) { transition('failed', current => { current.error = `Repeated identical verification failure; no further automatic repair.\n${evidence}`; }); continue; }
             transition('repairing', current => {
               current.remainingRepairAttempts--; current.error = evidence; current.verification = [];
@@ -212,7 +240,7 @@ async function executeTask(input: ResumeInput, agent: AgentAdapter, recovering: 
     }
   } catch (error) {
     if (leaseError) throw leaseError;
-    if (error instanceof DockerAccessError && task.environment) {
+    if (error instanceof DockerEnvironmentError && task.environment) {
       const path = join(task.directory, 'environment', 'docker-diagnostics.json');
       await mkdir(dirname(path), { recursive: true });
       await atomicWrite(path, JSON.stringify(error.diagnostic, null, 2) + '\n');
@@ -254,20 +282,24 @@ async function exportEvidence(store: TaskStore, owner: string, task: TaskRecord)
   const report: Report = {
     id: task.id, request: task.request, repositoryPath: task.repositoryPath, workspacePath: task.workspacePath,
     outcome: diffError ? 'failed' : task.status === 'completed' ? 'completed' : task.status === 'blocked' ? 'blocked' : task.status === 'cancelled' ? 'cancelled' : 'failed',
-    implemented: { summary: task.error ?? last?.result?.summary ?? '', diff: join(task.directory, 'changes.diff'), hasChanges: diff.length > 0 },
+    implemented: { summary: task.error ?? last?.result?.summary ?? '', diff: join(task.directory, 'changes.diff'), hasChanges: diff.length > 0 || task.status === 'completed' && !!task.applyManifest && JSON.parse(readFileSync(task.applyManifest, 'utf8')).entries.length > 0 },
+    execution: { phase: task.status === 'cancelled' ? 'cancelled' : task.status === 'completed' ? 'completed' : task.attempts.length === 0 ? (task.environment?.ready ? 'codex-not-started' : 'environment-failed') : task.attempts.some(attempt => attempt.result?.outcome === 'completed') ? 'verification-failed' : 'codex-failed', codexStarted: store.events(task.id).some(event => event.type === 'codex.session.started' || event.type === 'agent.thread.started'), turns: task.attempts.length },
+    acceptance: task.verificationPolicy?.criteria.length ? { criteria: task.verificationPolicy.criteria, manifest: join(task.directory, 'changes.manifest.json') } : undefined,
+    verificationPlan: task.verificationPlan ?? task.verificationPolicy?.plan,
     verification: task.verification, security: { status: 'unavailable', coverage: [] },
     environment: {
       dependencies: task.environment?.dependencies.length ? task.environment.dependencies.map(item => `${item.name}: ${item.kind}, health verified=${item.verified}`).join('; ') : 'No disposable services provisioned.',
       resources: [...(task.prepared ? [task.workspacePath] : []), ...(task.environment?.resources.map(item => `${item.kind}:${item.name}:${item.status}`) ?? [])],
-      execution: task.environment?.config.mode ?? 'host', recoveries: task.environment?.recoveries, cleanupErrors: task.environment?.cleanupErrors,
+      execution: task.environment?.selectedMode ?? ((task.environment?.selectedMode ?? task.environment?.config.mode) === 'docker' ? 'docker' : task.environment?.config.mode === 'host' ? 'host' : undefined), recoveries: task.environment?.recoveries, cleanupErrors: task.environment?.cleanupErrors,
       diagnostic: task.environment?.dockerDiagnostic ? { kind: task.environment.dockerDiagnostic.kind, recommendation: task.environment.dockerDiagnostic.recommendation, artifact: task.environment.dockerDiagnosticArtifact } : undefined,
     },
-    limitations: ['Milestone 3: no security scanners or production/external integration verification.', task.environment?.config.mode === 'docker' ? 'Configured verification backend: resource-limited Docker. The Codex worker uses its SDK workspace sandbox; check results show what actually ran.' : 'Explicit host mode: verification commands run locally. No Docker isolation was used.', 'Acceptance criteria guide execution; automated completion gates are the configured build and test commands.', ...(task.environment?.limitations ?? []), ...(task.environment?.cleanupErrors.map(error => `Resource cleanup incomplete: ${error}`) ?? []), ...(diffError ? [`Diff capture failed: ${diffError}`] : [])],
+    limitations: ['Security coverage is limited to explicitly configured checks; no general scanner coverage or production/external integration verification is implied.', (task.environment?.selectedMode ?? task.environment?.config.mode) === 'docker' ? 'Configured verification backend: resource-limited Docker for project commands; trusted syntax parsers only parse source without executing it. The Codex worker uses its SDK workspace sandbox; check results show what actually ran.' : task.environment?.selectedMode === 'filesystem' ? 'Structural verification only (filesystem, documentation or syntax); the harness ran no project commands. Codex tools still use the SDK workspace-write, no-network sandbox.' : 'Host verification: explicitly selected or permitted. Project commands run locally as the current user; no Docker isolation.', `Required acceptance: ${task.verificationPolicy?.description ?? 'legacy build/test commands'}. Missing required checks block completion.`, ...(task.verificationPlan?.limitations ?? []), ...task.verification.filter(check => check.status === 'unavailable' && check.requirement === 'optional').map(check => `Optional ${check.name} was not performed; see ${check.artifact}.`), ...(task.environment?.limitations ?? []), ...(task.environment?.cleanupErrors.map(error => `Resource cleanup incomplete: ${error}`) ?? []), ...(diffError ? [`Diff capture failed: ${diffError}`] : [])],
     usage: { elapsedMs: task.elapsedMs, agentTurns: task.attempts.length, retries: task.maxRepairAttempts - task.remainingRepairAttempts, tokens }, sessionId: last?.sessionId,
-    nextActions: task.status === 'completed' && !diffError ? [] : task.environment?.dockerDiagnostic ? [task.environment.dockerDiagnostic.recommendation] : ['Inspect the event journal, retained workspace, sessions, and verification evidence. Ambiguous interrupted actions require manual reconciliation; start a new task only after inspecting their effects.'],
+    nextActions: task.status === 'completed' && !diffError ? [`Review changes in retained workspace ${task.workspacePath}. The selected source repository ${task.repositoryPath} is unchanged.`, `Use /apply for a conflict-checked preview; confirm only the displayed verified changes.`, ...(task.verificationPolicy?.criteria.filter(item => item.kind === 'directory').map(item => `Empty directory ${item.path} is not represented in Git patches. After review, create this directory explicitly in the target repository, or continue working in the retained workspace.`) ?? [])] : task.environment?.dockerDiagnostic ? [task.environment.dockerDiagnostic.recommendation] : ['Inspect the event journal, retained workspace, sessions, and verification evidence. Ambiguous interrupted actions require manual reconciliation; start a new task only after inspecting their effects.'],
   };
   await mkdir(task.directory, { recursive: true });
   const files: Record<string, string> = {
+    'changes.manifest.json': JSON.stringify({ workspace: task.workspacePath, sourceRepository: task.repositoryPath, sourceModified: false, criteria: task.verificationPolicy?.criteria ?? [], note: 'Empty directories are not represented in Git diffs. Inspect the retained workspace and acceptance.log. Apply file diffs only after git apply --check; directory criteria must be created explicitly in the target repository.' }, null, 2) + '\n',
     'changes.diff': diff, 'report.json': JSON.stringify(report, null, 2) + '\n', 'report.md': renderReport(report),
     'task.json': JSON.stringify({ ...task, report: undefined }, null, 2) + '\n',
   };

@@ -1,3 +1,4 @@
+import { requiredChecksPass } from '../../packages/verification/src/execute-plan.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fork } from 'node:child_process';
@@ -56,7 +57,7 @@ for (const mode of ['confirmed', 'ambiguous', 'verification'] as const) test(`SI
     assert.equal(await readFile(join(workspace!, 'agent-effects'), 'utf8'), mode === 'verification' ? 'once\nonce\n' : 'once\n');
     if (mode === 'confirmed') {
       assert.equal(recovered.report.outcome, 'completed'); assert.equal(calls, 1);
-      assert.ok(recovered.report.verification.every(check => check.status === 'passed'));
+      assert.ok(requiredChecksPass(recovered.report.verification));
       const store = new TaskStore(databasePath(output));
       try {
         assert.ok(store.events(task.id).some(event => event.type === 'attempt.reconciled'));
@@ -88,7 +89,7 @@ test('repairs are bounded, reuse sessions, preserve evidence, and persist consum
     const store = new TaskStore(databasePath(output));
     try {
       const task = store.get(result.report.id); assert.equal(task.remainingRepairAttempts, 0); assert.equal(task.attempts.length, 2);
-      assert.match(await readFile(join(result.directory, 'test.log'), 'utf8'), /^$/); // Failed check's original log retained.
+      assert.match(await readFile(join(result.directory, 'test.log'), 'utf8'), /Exit code: 1[\s\S]*Status: failed/); // Failed check's original log retained.
       assert.equal(task.verification[1].status, 'passed'); assert.match(task.verification[1].artifact, /verification-1/);
     } finally { store.close(); }
   } finally { await cleanup(output, workspace); }

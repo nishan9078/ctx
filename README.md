@@ -18,8 +18,7 @@ The release build produces `releases/ctx-linux-x64.tar.gz` and its `.sha256` fil
 ```sh
 sha256sum -c ctx-linux-x64.tar.gz.sha256
 tar -xzf ctx-linux-x64.tar.gz
-cd ctx-linux-x64
-./ctx
+./ctx-linux-x64/ctx --repo /path/to/your/project
 ```
 
 To install the `ctx` command for your account:
@@ -31,9 +30,11 @@ cd /path/to/your/project
 ctx
 ```
 
-The installer writes only under `~/.local` by default and refuses to overwrite an existing installation. `./install.sh /other/prefix` selects another destination. It does not change shell profiles, Docker permissions, or authentication. Extracting and running `./ctx` also works without installing anything.
+The installer writes only under `~/.local` by default and requires `./install.sh --upgrade` to update an existing installation. An explicit upgrade retains backups of the previous release and launcher. `./install.sh /other/prefix` selects another destination. It does not change shell profiles, Docker permissions, or authentication. Extracting and running `./ctx` also works without installing anything.
 
-CTX opens its own terminal interface. Describe a request to start work. `/repo` chooses a project; `/tasks`, `/status`, `/diff`, `/resume`, `/cancel`, and `/details` inspect and control work. `/set pull on` explicitly permits image downloads, and `/set install on` explicitly permits frozen dependency installation. `/set execution host` selects trusted host checks. Regular progress uses CTX stages and results; engine-specific evidence is available through `/details`. Authentication remains the connected provider's own sign-in flow (`ctx login` or `/login`). `ctx doctor` checks local prerequisites without running a model scan.
+If `ctx` still opens an old interface, inspect `command -v ctx`: a previously installed copy can differ from `releases/ctx-linux-x64/ctx`. Run the rebuilt executable directly, or update using `./releases/ctx-linux-x64/install.sh --upgrade` from the checkout. The launcher preserves the directory you launched it from as the default target repository. `/repo` changes the selected target independently of the executable location.
+
+CTX opens its own full-screen terminal interface with a scrollable transcript, task progress, security status, and an input area. The downloadable bundle includes Node.js 26.4.0 and enables its required FFI support. Use `ctx --plain` for the line interface; redirected input selects it automatically. An unsupported interactive runtime reports an error instead of silently selecting readline. `pnpm ctx` uses the bundled runtime when available. Ctrl-C cancels active work, then exits on a second press; Page Up and Page Down scroll the transcript. Tab switches Minimal/Detailed without restarting work or losing history; the preference is saved in the selected repository’s `.harness/ui.json`. Shift-Enter or Ctrl-J adds a line; Enter sends. Ctrl-P opens the searchable command palette, F1 or `/help` opens help, and Ctrl-O inspects command output and tool events. Detailed mode shows the journal timeline, plan, verification and recovery state; `/diff` opens a scrollable patch inspector. Read commands stay available during work; starting another task or changing the repository/settings requires cancelling the active operation first. Describe a request to start work. `/repo` chooses a project; `/tasks`, `/status`, `/diff`, `/resume`, `/cancel`, and `/details` inspect and control work. `/set pull on` explicitly permits image downloads, and `/set install on` explicitly permits frozen dependency installation. `/set execution host` selects trusted host checks. Regular progress uses CTX stages and results; engine-specific evidence is available through `/details`. Authentication remains the connected provider's own sign-in flow (`ctx login` or `/login`). `ctx doctor` checks local prerequisites without running a model scan.
 
 `/security` uses the security SDK underneath CTX. It reviews the last task's staged/unstaged changes in its private worktree, or the selected repository when there is no last task. Scans are explicit and separate from the coding task's completion/report status; this is not yet the Milestone 4 automatic security gate. They run in a subprocess with unrelated environment credentials removed and a requested read-only agent sandbox. Security output is saved privately outside the repository. The estimated scan budget is $1 (not a billing cap), with a five-minute worker timeout. SDK availability and input preflight do not establish account entitlement or completed coverage; unavailable, failed, and interrupted scans never become a security pass.
 
@@ -42,10 +43,29 @@ For development and rebuilding the downloadable bundle:
 ```sh
 pnpm install
 pnpm ctx                 # build and open the interface
-pnpm release             # build a bundle for the current Linux x64/arm64 host
+pnpm release             # build a bundle; includes real PTY acceptance
+pnpm test:tui            # native UI tests using the bundled runtime
+pnpm release:check       # relocated and installed executable acceptance
 ```
 
 The release builder downloads a pinned official Node.js archive, checks its SHA-256 against the official manifest, copies only production dependencies, verifies portable package links, and writes a release checksum. Credentials, task databases, and workspace artifacts are excluded. Only the Linux x64 release has been built and tested here; other platforms require their own validated builds.
+
+CTX freezes task-specific verification before Codex starts. Simple requests such as `Create folder demo`, `hello can you make a folder` (uses `new-folder`), or `Create file note.txt with content "hello"` use deterministic filesystem checks in `auto` mode. These checks only inspect the private worktree; they do not execute project code or require Docker/build scripts. Codex still runs in its workspace-write/no-network SDK sandbox. Application changes run available build/test/typecheck checks, with a test command required. Explicitly supplied checks are always required, including for filesystem requests. Authentication/security-sensitive tasks additionally require a configured security check; unavailable checks never count as passing.
+
+```sh
+ctx run 'Create folder demo' --repo /path/to/project
+ctx run 'Create file note.txt with content "hello"' --repo /path/to/project
+ctx run 'Fix the feature' --repo /path/to/project --execution host
+ctx run 'Fix the feature' --repo /path/to/project --execution auto --allow-host-fallback
+ctx run 'Make the requested changes' --repo /path/to/project --acceptance criteria.json
+pnpm test:engineering-live  # authenticated real Codex filesystem and TypeScript acceptance
+```
+
+`--acceptance` accepts a nonempty JSON array of `{ "kind": "directory"|"file"|"markdown", "path": "relative/path" }` or `{ "kind": "content", "path": "note.txt", "content": "expected", "match": "exact"|"contains" }`. Paths cannot escape the worktree or traverse symbolic links. Markdown checks validate local link targets and external URL syntax; external network reachability is unverified. A general prose request with no deterministic criteria remains an application task; provide criteria for non-code work.
+
+`--execution docker` always fails safely when Docker is unavailable. `--execution host` explicitly permits project checks as the current user without container isolation. `--execution auto` never falls back to host implicitly. Disposable services still require Docker. Missing local dependencies can be recovered with frozen lockfile installation only after `--allow-dependency-install`; lifecycle scripts remain disabled. UI equivalents are `/set execution auto|docker|host`, `/set fallback on`, and `/set install on`.
+
+Lifecycle evidence distinguishes environment failure, Codex not started, Codex failure, verification failure, cancellation, and completion. Both UI modes expose `codex.session.started`, `codex.turn.started`, `codex.tool.started/completed`, `codex.turn.completed`, and verification events. Detailed mode retains the underlying journal and outputs. Changes stay in the reported private worktree. `changes.diff` contains files; `changes.manifest.json` records filesystem criteria including empty folders, which Git patches cannot represent. Review the worktree and use `git apply --check` before applying file changes; create approved empty directories explicitly in the source repository.
 
 For another stack, provide both verification commands:
 
@@ -54,7 +74,7 @@ pnpm harness run "Implement the requested feature" --repo /path/to/repo \
   --build 'make build' --test 'make test' --timeout 600 --max-repairs 1
 ```
 
-Node repositories default to `npm run build` and `npm test` when those scripts exist. Commands are frozen before execution. Docker is the default verification backend; Docker unavailability blocks the task before spending a coding turn. Missing commands produce `blocked`. Failed checks first pass through deterministic environment diagnostics and a separate persisted recovery budget (3 attempts by default, configurable with `--max-recoveries`, maximum 10). Only remaining application failures trigger at most `--max-repairs` repairs (0 by default, maximum 10); exhausted budgets and repeated identical failures stop the task. Each repair resumes the final coding step's SDK session when one was captured, preserves prerequisite steps, and reruns both checks. Failed checks' logs remain in their original locations; each environment recovery or coding repair writes new logs under `verification-N/`. Agent execution failures stop without automatic replay.
+Node repositories default to `npm run build` and `npm test` when those scripts exist. Commands are frozen before execution. Docker is the preferred application verification backend; Docker unavailability blocks the task before spending a coding turn. Missing commands produce `blocked`. Failed checks first pass through deterministic environment diagnostics and a separate persisted recovery budget (3 attempts by default, configurable with `--max-recoveries`, maximum 10). Only remaining application failures trigger at most `--max-repairs` repairs (0 by default, maximum 10); exhausted budgets and repeated identical failures stop the task. Each repair resumes the final coding step's SDK session when one was captured, preserves prerequisite steps, and reruns both checks. Failed checks' logs remain in their original locations; each environment recovery or coding repair writes new logs under `verification-N/`. Agent execution failures stop without automatic replay.
 
 `--model` selects the SDK model. `--timeout` is a whole-task wall-clock budget, including downtime across restarts. Ctrl-C cancels the active agent/check. Cancellation is terminal; unexpected process death is handled by `resume`.
 
@@ -84,7 +104,7 @@ The deterministic default plan is one coding step carrying the user's request. `
 }
 ```
 
-Runtime validation rejects malformed steps, duplicate IDs, missing dependencies, cycles, and forged statuses. Plans are immutable after submission and stored by version. Exactly one step runs at a time; a dependent step waits for its prerequisites' recorded execution results. After all coding steps pass, the configured build and test commands run in resource-limited containers as completion gates. Textual acceptance criteria guide the agent; they are not independently machine-verified requirements.
+Runtime validation rejects malformed steps, duplicate IDs, missing dependencies, cycles, and forged statuses. Plans are immutable after submission and stored by version. Exactly one step runs at a time; a dependent step waits for its prerequisites' recorded execution results. After all coding steps pass, the frozen required checks run in the selected backend as completion gates. Structured filesystem criteria are independently machine-verified; prose plan criteria remain guidance to the agent.
 
 ## State, recovery and evidence
 
@@ -143,7 +163,7 @@ Declare disposable services in `.harness-environment.json` in the target reposit
 
 The repository file may only declare services. Execution mode, image, pull permission, installation permission, and budgets must come from CLI/API options. Alternatively, `--services services.json` accepts the inner services object. PostgreSQL may also be inferred from a `pg`/`postgres` dependency together with a PostgreSQL hint in `.env.example`. Service endpoints are always task-local; existing shared database endpoints are never probed or migrated by recovery.
 
-Services start only after a matching verification failure. PostgreSQL connection/DNS failures start `postgres:16-bookworm` with tmpfs data on the internal network. Both `pg_isready` and `psql SELECT 1` must pass before the action succeeds, then **both application build and tests rerun**, including any configured migration behavior. `DATABASE_URL` points at this disposable test database. This verifies local application behavior, not a production database integration.
+Services start only after a matching verification failure. PostgreSQL connection/DNS failures start `postgres:16-bookworm` with tmpfs data on the internal network. Both `pg_isready` and `psql SELECT 1` must pass before the action succeeds, then **all required application checks rerun**, including any configured migration behavior. `DATABASE_URL` points at this disposable test database. This verifies local application behavior, not a production database integration.
 
 An explicit mock contract handles missing API credentials or a missing mock endpoint. Its health check must pass; the configured URL variable points at the private mock, and an optional key variable receives a mock-only placeholder. Responses are static JSON, include `x-harness-mock: true`, and unknown routes return 404. Mock coverage is labeled in reports and live external API integration remains unverified. No contract means the task blocks rather than inventing credentials or mock responses.
 

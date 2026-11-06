@@ -55,7 +55,11 @@ export class TaskStore {
     return this.transaction(() => {
       this.assertOwner(id, owner);
       const task = this.get(id); const before = structuredClone(task);
-      mutate(task); assertTransition(before.status, task.status);
+      mutate(task);
+      if (JSON.stringify(task.commands) !== JSON.stringify(before.commands) || JSON.stringify(task.verificationPolicy) !== JSON.stringify(before.verificationPolicy)) throw new Error('Verification requirements are immutable');
+      if (before.verificationPlan && !task.verificationPlan) throw new Error('Resolved verification plan cannot be erased');
+      if (before.verificationPolicy?.plan && task.verificationPlan) { for (const check of [...before.verificationPolicy.plan.checks, ...(before.verificationPlan?.checks ?? [])].filter(item => item.requirement === 'mandatory' && (item.kind === 'command' || item.kind === 'browser'))) { const resolved = task.verificationPlan.checks.find(item => item.id === check.id); if (!resolved || resolved.requirement !== 'mandatory' || resolved.command !== check.command) throw new Error('Mandatory verification checks cannot be removed or replaced'); } }
+      assertTransition(before.status, task.status);
       if (before.environment) {
         if (!task.environment || JSON.stringify(before.environment.config) !== JSON.stringify(task.environment.config)) throw new Error('Environment configuration is immutable');
         const expectedRecoveryBudget = before.environment.remainingRecoveryAttempts - (type === 'environment.recovery.intent' ? 1 : 0);

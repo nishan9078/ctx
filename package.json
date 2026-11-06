@@ -16,19 +16,24 @@
     "typecheck": "tsc --noEmit",
     "test": "pnpm build && node --test dist/tests/unit/*.test.js dist/tests/integration/*.test.js",
     "harness": "tsx apps/cli/src/index.ts",
-    "ctx": "pnpm build && node --disable-warning=ExperimentalWarning dist/apps/cli/src/index.js",
+    "ctx": "pnpm build && node scripts/start-ctx.mjs",
     "release": "pnpm build && node scripts/package-release.mjs",
     "test:live": "pnpm build && HARNESS_LIVE=1 node --test dist/tests/integration/live.test.js",
     "test:docker": "pnpm build && HARNESS_DOCKER=1 node --test dist/tests/integration/docker-live.test.js",
-    "release:check": "node scripts/verify-release.mjs"
+    "release:check": "node scripts/verify-release.mjs",
+    "test:tui": "pnpm build && node scripts/test-tui.mjs",
+    "test:engineering-live": "pnpm build && HARNESS_LIVE=1 node --test dist/tests/integration/engineering-live.test.js"
   },
   "dependencies": {
+    "@openai/codex-sdk": "0.166.0",
     "@openai/codex-security": "0.8.3",
-    "@openai/codex-sdk": "0.166.0"
+    "@opentui/core": "0.8.2",
+    "parse5": "8.0.0",
+    "playwright-core": "1.56.1",
+    "typescript": "5.9.3"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "tsx": "^4.20.0",
-    "typescript": "^5.9.0"
+    "tsx": "^4.20.0"
   }
 }

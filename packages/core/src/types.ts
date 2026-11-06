@@ -15,7 +15,10 @@ export interface Attempt {
 export interface TaskRecord {
   id: string; request: string; repositoryPath: string; directory: string; workspacePath: string;
   status: TaskStatus; createdAt: string; updatedAt: string;
-  plan: Plan; commands: { build?: string; test?: string }; prepared: boolean;
+  verificationPlan?: import('../../verification/src/planner.js').VerificationPlan;
+  applyManifest?: string;
+  verificationPolicy?: import('../../verification/src/policy.js').VerificationPolicy;
+  plan: Plan; commands: { build?: string; test?: string; typecheck?: string; security?: string; browser?: string }; prepared: boolean;
   maxRepairAttempts: number; remainingRepairAttempts: number;
   attempts: Attempt[]; verification: CheckResult[]; activeCheck?: string;
   environment?: EnvironmentState;

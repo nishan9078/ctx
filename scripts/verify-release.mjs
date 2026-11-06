@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, writeFile, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFile, spawn } from 'node:child_process';
@@ -32,8 +32,17 @@ try {
     child.on('error', error => { clearTimeout(timer); reject(error); });
     child.on('exit', code => { clearTimeout(timer); try { assert.equal(code, 0, output); assert.match(output, /Session closed/); assert.doesNotMatch(output, /@openai|codex-sdk|codex-security/); resolveResult(); } catch (error) { reject(error); } });
   });
+  for (const mode of ['quit', 'interrupt', 'terminate']) await exec('python3', [resolve('scripts/verify-terminal.py'), join(app, 'ctx'), join(app, 'examples', 'hello'), mode], { timeout: 60_000 });
   const prefix = join(root, 'install with spaces'); await exec(join(app, 'install.sh'), [prefix], { cwd: root });
   assert.equal((await exec(join(prefix, 'bin', 'ctx'), ['--version'], { cwd: root })).stdout.trim(), 'ctx 0.1.0');
   assert.ok((await stat(join(prefix, 'share', 'ctx', '0.1.0', 'runtime', 'bin', 'node'))).isFile());
-  console.log('Release verified: checksum, relocation, private runtime, engine imports, terminal interaction, and installation.');
+  await writeFile(join(prefix, 'share/ctx/0.1.0/stale-install.txt'), 'old release');
+  await assert.rejects(exec(join(app, 'install.sh'), [prefix]), /installation exists/);
+  await exec(join(app, 'install.sh'), ['--upgrade', prefix]);
+  const backups = (await readdir(join(prefix, 'share/ctx'))).filter(name => name.startsWith('0.1.0.backup-'));
+  assert.equal(backups.length, 1);
+  assert.equal(await readFile(join(prefix, 'share/ctx', backups[0], 'stale-install.txt'), 'utf8'), 'old release');
+  await assert.rejects(readFile(join(prefix, 'share/ctx/0.1.0/stale-install.txt')));
+  await exec('python3', [resolve('scripts/verify-terminal.py'), join(prefix, 'bin', 'ctx'), join(app, 'examples', 'hello'), 'quit'], { timeout: 60_000 });
+  console.log('Release verified: checksum, relocation, private runtime, engine imports, plain and full-screen terminal interaction, restored terminal modes, installation, explicit upgrade with backup, and the installed executable.');
 } finally { await rm(root, { recursive: true, force: true }); }

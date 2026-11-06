@@ -1,3 +1,5 @@
+import { executeVerificationPlan } from './execute-plan.js';
+import { verifyAcceptance, type VerificationPolicy, type CheckName } from './policy.js';
 import type { CommandRunner } from '../../environment/src/types.js';
 import { EnvironmentUnavailable } from '../../environment/src/types.js';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -5,18 +7,22 @@ import { join } from 'node:path';
 import type { CheckResult } from '../../shared/src/contracts.js';
 import { redact } from '../../shared/src/redact.js';
 import { runProcess } from '../../environment/src/process-manager.js';
-export async function discoverCommands(repo: string, overrides: { build?: string; test?: string }): Promise<{ build?: string; test?: string }> {
+export async function discoverCommands(repo: string, overrides: Partial<Record<CheckName, string>>): Promise<Partial<Record<CheckName, string>>> {
   let scripts: Record<string, unknown> = {};
   try { scripts = JSON.parse(await readFile(join(repo, 'package.json'), 'utf8')).scripts ?? {}; }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
   return {
+    browser: overrides.browser ?? (typeof scripts['test:browser'] === 'string' ? 'npm run test:browser' : undefined),
     build: overrides.build ?? (typeof scripts.build === 'string' ? 'npm run build' : undefined),
+    typecheck: overrides.typecheck ?? (typeof scripts.typecheck === 'string' ? 'npm run typecheck' : undefined),
+    security: overrides.security ?? (typeof scripts.security === 'string' ? 'npm run security' : undefined),
     test: overrides.test ?? (typeof scripts.test === 'string' ? 'npm test' : undefined),
   };
 }
-export async function verify(workspace: string, artifacts: string, commands: { build?: string; test?: string }, signal?: AbortSignal, timeoutMs?: number, hooks?: { existing?: CheckResult[]; before?: (name: string) => void; after?: (check: CheckResult) => void }, runner?: CommandRunner): Promise<CheckResult[]> {
+export async function verify(workspace: string, artifacts: string, commands: Partial<Record<CheckName, string>>, signal?: AbortSignal, timeoutMs?: number, hooks?: { existing?: CheckResult[]; before?: (name: string) => void; after?: (check: CheckResult) => void }, runner?: CommandRunner, policy?: VerificationPolicy): Promise<CheckResult[]> {
+  if (policy?.plan) return executeVerificationPlan(workspace, artifacts, policy.plan, policy, signal, timeoutMs, hooks, runner);
   const checks: CheckResult[] = [];
-  for (const name of ['build', 'test'] as const) {
+  for (const name of policy?.required ?? ['build', 'test'] as const) {
     const existing = hooks?.existing?.find(check => check.name === name);
     if (existing) { checks.push(existing); continue; }
     hooks?.before?.(name);
@@ -38,5 +44,17 @@ export async function verify(workspace: string, artifacts: string, commands: { b
     // to repair, nor permission to retry from a different execution context.
     if (infrastructureError) throw infrastructureError;
   }
+  if (policy?.criteria.length) {
+    const existing = hooks?.existing?.find(check => check.name === 'acceptance');
+    if (existing) checks.push(existing);
+    else {
+      hooks?.before?.('acceptance'); const started = Date.now(); signal?.throwIfAborted();
+      const result = await verifyAcceptance(workspace, policy.criteria); const artifact = join(artifacts, 'acceptance.log');
+      await writeFile(artifact, redact(result.output));
+      const check: CheckResult = { name: 'acceptance', command: 'CTX deterministic filesystem acceptance', status: result.passed ? 'passed' : 'failed', exitCode: result.passed ? 0 : 1, durationMs: Date.now() - started, artifact };
+      checks.push(check); hooks?.after?.(check);
+    }
+  }
+  if (!checks.length) throw new Error('No required verification checks; refusing vacuous completion');
   return checks;
 }

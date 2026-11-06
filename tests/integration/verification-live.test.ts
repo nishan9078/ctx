@@ -1,0 +1,23 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, readFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { runTask, databasePath } from '../../packages/core/src/orchestrator.js';
+import { CodexSdkAdapter } from '../../packages/agents/src/codex-sdk.adapter.js';
+import { requiredChecksPass } from '../../packages/verification/src/execute-plan.js';
+import { previewApply, confirmApply } from '../../packages/core/src/apply.js';
+test('LIVE verification: real Codex builds a standalone Flappy Bird HTML, independent checks pass, and verified apply transfers it safely', { skip: process.env.HARNESS_LIVE !== '1', timeout: 240_000 }, async () => {
+  const source = await mkdtemp(join(tmpdir(), 'ctx-real-flappy-')); const output = resolve('.harness/verification-live');
+  const result = await runTask({ request: 'Build a standalone playable Flappy Bird game in one file named index.html. Use canvas, gravity, pipes, score, Space/click flap controls and restart after game over. No external dependencies, no package.json and no test runner. Actually create the file using a tool. The harness will perform its own syntax verification; do not claim independent browser coverage.', repositoryPath: source, outputDirectory: output, environment: { mode: 'auto' }, timeoutMs: 180_000 }, new CodexSdkAdapter());
+  console.log(`Real HTML evidence: ${result.directory}`);
+  assert.equal(result.report.outcome, 'completed', JSON.stringify(result.report)); assert.equal(result.report.execution?.codexStarted, true); assert.ok(requiredChecksPass(result.report.verification));
+  assert.equal(result.report.verification.find(check => check.name === 'test')?.status, 'not-applicable');
+  assert.equal(result.report.verification.find(check => check.name === 'syntax')?.status, 'passed');
+  const browser = result.report.verification.find(check => check.name === 'browser')!; assert.equal(browser.requirement, 'optional'); assert.equal(browser.status, 'unavailable');
+  assert.match(await readFile(join(result.report.workspacePath!, 'index.html'), 'utf8'), /canvas/i);
+  const preview = await previewApply(databasePath(output), result.report.id, source); assert.deepEqual(preview.conflicts, []); assert.ok(preview.token);
+  const applied = await confirmApply(databasePath(output), result.report.id, source, preview.token!); assert.equal(applied.status, 'applied');
+  assert.equal(await readFile(join(source, 'index.html'), 'utf8'), await readFile(join(result.report.workspacePath!, 'index.html'), 'utf8'));
+  console.log(`Applied real game: ${join(source, 'index.html')}\nApply receipt: ${applied.receipt}`);
+});

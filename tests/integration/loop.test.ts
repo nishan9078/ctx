@@ -1,3 +1,4 @@
+import { requiredChecksPass } from '../../packages/verification/src/execute-plan.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, writeFile, rm, symlink } from 'node:fs/promises';
@@ -21,8 +22,8 @@ test('fixture feature produces real diff, passing checks and persisted evidence 
   try {
     const { report, directory } = await runTask({ environment: { mode: 'host' }, request: 'Add version and feature', repositoryPath: fixture, outputDirectory: output }, featureAgent);
     workspace = report.workspacePath;
-    assert.equal(report.outcome, 'completed'); assert.equal(report.verification.length, 2);
-    assert.ok(report.verification.every(check => check.status === 'passed'));
+    assert.equal(report.outcome, 'completed'); assert.deepEqual(report.verification.filter(check => ['build', 'test'].includes(check.name)).map(check => check.name), ['build', 'test']);
+    assert.ok(requiredChecksPass(report.verification));
     const diff = await readFile(report.implemented.diff, 'utf8'); assert.match(diff, /feature.js/); assert.match(diff, /version = 2/);
     assert.equal(await readFile(join(fixture, 'index.js'), 'utf8'), before);
     assert.match(await readFile(join(directory, 'test.log'), 'utf8'), /pass 1/);

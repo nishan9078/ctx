@@ -1,7 +1,7 @@
 import { runProcess } from './process-manager.js';
 import type { DockerDriver, EnvironmentConfig, ManagedResource } from './types.js';
 import { EnvironmentUnavailable } from './types.js';
-import { diagnoseDockerAccess, DockerAccessError, isDockerAccessDenied } from './docker-diagnostics.js';
+import { dockerFailure, diagnoseDockerAccess, DockerAccessError, isDockerAccessDenied } from './docker-diagnostics.js';
 import { redact } from '../../shared/src/redact.js';
 export class LocalDockerDriver implements DockerDriver {
   readonly kind = 'live' as const;
@@ -17,6 +17,7 @@ export class LocalDockerDriver implements DockerDriver {
       if (result.code !== 0 && isDockerAccessDenied(result.output)) {
         throw new DockerAccessError(`Docker access failed: ${redact(result.output)}`, await diagnoseDockerAccess(result.output, args[0] ?? 'unknown'));
       }
+      if ((result.code !== 0 || result.timedOut) && args[0] === 'info') throw dockerFailure('daemon-unavailable', 'info', `Docker daemon unavailable: ${redact(result.output)}`, 'Check the selected Docker endpoint and start or reconnect the daemon using your approved host configuration. Alternatively explicitly select --execution host or approve --allow-host-fallback with --execution auto.');
       return result;
     } catch (error) {
       if (error instanceof EnvironmentUnavailable) throw error;

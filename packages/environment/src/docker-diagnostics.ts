@@ -12,15 +12,22 @@ export interface DockerAccessFacts {
   socket?: { path: string; uid: number; gid: number; mode: number; group?: string; configuredMember?: boolean };
 }
 export interface DockerAccessDiagnostic {
-  kind: 'stale-session-groups' | 'socket-permission-denied';
+  kind: 'stale-session-groups' | 'socket-permission-denied' | 'daemon-unavailable' | 'image-missing' | 'container-startup-failed';
   operation: string;
   facts: DockerAccessFacts;
   recommendation: string;
 }
-export class DockerAccessError extends EnvironmentUnavailable {
+export class DockerEnvironmentError extends EnvironmentUnavailable {
+  override name = 'DockerEnvironmentError';
+  constructor(message: string, readonly diagnostic: DockerAccessDiagnostic) { super(`${message}\n${diagnostic.recommendation}`); }
+}
+export function dockerFailure(kind: DockerAccessDiagnostic['kind'], operation: string, message: string, recommendation: string): DockerEnvironmentError {
+  return new DockerEnvironmentError(message, { kind, operation, recommendation, facts: { uid: process.getuid?.(), gid: process.getgid?.(), groups: process.getgroups?.() ?? [] } });
+}
+export class DockerAccessError extends DockerEnvironmentError {
   override name = 'DockerAccessError';
-  constructor(message: string, readonly diagnostic: DockerAccessDiagnostic) {
-    super(`${message}\n${diagnostic.recommendation}`);
+  constructor(message: string, diagnostic: DockerAccessDiagnostic) {
+    super(message, diagnostic);
   }
 }
 export function classifyDockerAccess(facts: DockerAccessFacts, operation: string): DockerAccessDiagnostic {

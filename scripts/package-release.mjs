@@ -7,7 +7,7 @@ import { promisify } from 'node:util';
 const exec = promisify(execFile);
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 if (process.platform !== 'linux' || !['x64', 'arm64'].includes(process.arch)) throw new Error('Build this release on its target Linux x64/arm64 platform.');
-const nodeVersion = '22.22.1'; const target = `linux-${process.arch}`;
+const nodeVersion = '26.4.0'; const target = `linux-${process.arch}`;
 const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
 if (!/^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/.test(pkg.version)) throw new Error('Invalid release version');
 const cache = join(root, '.harness', 'release-cache'); await mkdir(cache, { recursive: true });
@@ -70,12 +70,12 @@ async function linkPackage(source, location) {
 }
 console.log('Packaging installed production dependencies…');
 for (const dependency of Object.keys(pkg.dependencies)) await linkPackage(await resolveDependency(root, dependency), join(moduleRoot, dependency));
-const launcher = `#!/bin/sh\nset -eu\nCTX_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexport PATH="$CTX_ROOT/runtime/bin:$CTX_ROOT/app/node_modules/.bin:$PATH"\nexec "$CTX_ROOT/runtime/bin/node" --disable-warning=ExperimentalWarning "$CTX_ROOT/app/dist/apps/cli/src/index.js" "$@"\n`;
+const launcher = `#!/bin/sh\nset -eu\nCTX_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexport CTX_EXECUTABLE_DIR="$CTX_ROOT"\nexport PATH="$CTX_ROOT/runtime/bin:$CTX_ROOT/app/node_modules/.bin:$PATH"\nexec "$CTX_ROOT/runtime/bin/node" --experimental-ffi --disable-warning=ExperimentalWarning "$CTX_ROOT/app/dist/apps/cli/src/index.js" "$@"\n`;
 await writeFile(join(stage, 'ctx'), launcher, { mode: 0o755 });
-const installer = `#!/bin/sh\nset -eu\nCTX_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nCTX_PREFIX=\${1:-"$HOME/.local"}\nCTX_DEST="$CTX_PREFIX/share/ctx/${pkg.version}"\nif [ -e "$CTX_DEST" ] || [ -e "$CTX_PREFIX/bin/ctx" ] || [ -L "$CTX_PREFIX/bin/ctx" ]; then\n  echo "A CTX installation already exists at this prefix; choose another prefix." >&2\n  exit 1\nfi\nmkdir -p "$CTX_DEST" "$CTX_PREFIX/bin"\ncp -R "$CTX_ROOT/." "$CTX_DEST/"\n# Install a relative launcher so prefixes containing spaces remain portable.\ncat > "$CTX_PREFIX/bin/ctx" <<'CTX_LAUNCH'\n#!/bin/sh\nset -eu\nCTX_PREFIX=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)\nexec "$CTX_PREFIX/share/ctx/${pkg.version}/ctx" "$@"\nCTX_LAUNCH\nchmod 755 "$CTX_PREFIX/bin/ctx"\nprintf 'Installed: %s/bin/ctx\\nAdd %s/bin to PATH if necessary.\\n' "$CTX_PREFIX" "$CTX_PREFIX"\n`;
-await writeFile(join(stage, 'install.sh'), installer, { mode: 0o755 });
-await writeFile(join(stage, 'release-manifest.json'), JSON.stringify({ product: 'ctx', version: pkg.version, platform: target, node: nodeVersion, packages }, null, 2) + '\n');
-await writeFile(join(stage, 'README.txt'), `CTX ${pkg.version} — ${target}\n\nRun ./ctx to open the terminal interface. No Node.js or pnpm installation is needed.\nOptional: ./install.sh installs ctx under ~/.local; ./install.sh /custom/prefix chooses another prefix.\n\nRequires a compatible glibc Linux system, Git, and Docker access for sandboxed verification.\nSecurity scanning also requires Python 3.10+ (tomli on Python 3.10) and provider authentication/access.\nUse ./ctx login to sign in and ./ctx doctor to inspect prerequisites.\nExisting provider authentication is reused; no credentials are included in this archive.\n\nDescribe a task, /repo chooses a project, /help lists commands.\nDefault verification uses Docker with cached images. /set pull on explicitly permits image downloads.\n/set install on explicitly permits frozen dependency installation. /security starts a separate security scan.\nSecurity scans have a $1 estimated budget; this is not a billing cap. Security unavailability is never a pass.\nThe original project is preserved; /diff reviews changes in the private task worktree.\n\nThird-party package names, versions and licenses: release-manifest.json and each package's license files.\nNode.js license: runtime/LICENSE. This release is a development build.\n`);
+await cp(join(root, 'scripts', 'install-release.sh'), join(stage, 'install.sh'));
+await chmod(join(stage, 'install.sh'), 0o755);
+await writeFile(join(stage, 'release-manifest.json'), JSON.stringify({ product: 'ctx', version: pkg.version, platform: target, node: nodeVersion, interface: 'opentui', displayModes: ['minimal', 'detailed'], packages }, null, 2) + '\n');
+await writeFile(join(stage, 'README.txt'), `CTX ${pkg.version} — ${target}\n\nRun ./ctx --repo /path/to/project to open the terminal interface. The installation directory is not a task target. No Node.js or pnpm installation is needed.\nOptional: ./install.sh --upgrade updates an existing installation and retains backups.\n./install.sh installs ctx under ~/.local; ./install.sh /custom/prefix chooses another prefix.\n\nRequires a compatible glibc Linux system, Git, and Docker access for sandboxed verification.\nSecurity scanning also requires Python 3.10+ (tomli on Python 3.10) and provider authentication/access.\nUse ./ctx login to sign in and ./ctx doctor to inspect prerequisites.\nExisting provider authentication is reused; no credentials are included in this archive.\n\nDescribe a task, /repo chooses a project, /help lists commands.\nAuto mode verifies simple filesystem tasks directly; application checks prefer Docker. Host fallback requires explicit approval via /retry host or /set fallback on. /set pull on explicitly permits image downloads.\n/set install on explicitly permits frozen dependency installation. /security starts a separate security scan.\nSecurity scans have a $1 estimated budget; this is not a billing cap. Security unavailability is never a pass.\nThe original project is preserved; /diff reviews changes in the private task worktree.\n\nThird-party package names, versions and licenses: release-manifest.json and each package's license files.\nNode.js license: runtime/LICENSE. This release is a development build.\n`);
 async function validateLinks(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const path = join(directory, entry.name);
@@ -88,6 +88,7 @@ async function validateLinks(directory) {
 await validateLinks(stage);
 const smoke = await exec(join(stage, 'ctx'), ['--version'], { cwd: stage });
 if (smoke.stdout.trim() !== `ctx ${pkg.version}`) throw new Error('Release launcher/version smoke test failed');
+await exec('python3', [join(root, 'scripts', 'verify-terminal.py'), join(stage, 'ctx'), join(stage, 'examples', 'hello'), 'quit'], { timeout: 60_000, maxBuffer: 1_000_000 });
 const output = join(root, 'releases'); await mkdir(output, { recursive: true });
 const archiveOutput = join(output, `${name}.tar.gz`);
 await exec('tar', ['-czf', archiveOutput + '.partial', '-C', build, name]);

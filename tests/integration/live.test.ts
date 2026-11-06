@@ -1,3 +1,4 @@
+import { requiredChecksPass } from '../../packages/verification/src/execute-plan.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -13,7 +14,7 @@ test('LIVE: Codex implements a fixture feature and harness captures diff plus te
   assert.equal(report.outcome, 'completed', report.implemented.summary);
   assert.equal(report.implemented.hasChanges, true);
   assert.match(await readFile(report.implemented.diff, 'utf8'), /farewell/);
-  assert.ok(report.verification.every(check => check.status === 'passed'));
+  assert.ok(requiredChecksPass(report.verification));
   const testLog = await readFile(join(directory, 'test.log'), 'utf8');
   assert.doesNotMatch(testLog, /skipping running files/);
   assert.match(testLog, /pass 2/);

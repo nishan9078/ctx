@@ -172,6 +172,18 @@ importers:
       '@openai/codex-security':
         specifier: 0.8.3
         version: 0.8.3(@types/node@22.20.5)(graphql@17.0.2)
+      '@opentui/core':
+        specifier: 0.8.2
+        version: 0.8.2(typescript@5.9.3)(web-tree-sitter@0.25.10)
+      parse5:
+        specifier: 8.0.0
+        version: 8.0.0
+      playwright-core:
+        specifier: 1.56.1
+        version: 1.56.1
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
@@ -179,9 +191,6 @@ importers:
       tsx:
         specifier: ^4.20.0
         version: 4.23.15
-      typescript:
-        specifier: ^5.9.0
-        version: 5.9.3
 
   apps/cli: {}
 
@@ -192,6 +201,8 @@ importers:
   packages/environment: {}
 
   packages/persistence: {}
+
+  packages/security: {}
 
   packages/shared: {}
 
@@ -664,6 +675,54 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@opentui/core-darwin-arm64@0.8.2':
+    resolution: {integrity: sha512-/8pFK289hi+jtoUgJYZJEABTreLoQ3tNVQuMFLF0xDBkREJaR9xvh2RHKzhVLut9bhKf9oY2bgD37pMgYNqwqA==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@opentui/core-darwin-x64@0.8.2':
+    resolution: {integrity: sha512-AN3QB5yIGQyKs4XKgGuA1vSLA++jonTB6NR2fNLbw4+wizgETlQ77ur30175yEVysaN2tQNO2dJasvHMx05WQg==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@opentui/core-linux-arm64-musl@0.8.2':
+    resolution: {integrity: sha512-nB/RtlowKo9mlybfL1iHr0Wr4ZF/n4bQ8i7UaphUPNopXSq6YoWT7D4lyjubLBqjJ4KPkaXXHAiReSZ0e1V7ZA==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@opentui/core-linux-arm64@0.8.2':
+    resolution: {integrity: sha512-Inkhg/P5UBNPySqeh0+4K8NbqUIolJ3WNgvX9I25x2nT/DFA8kUN1Y7fbQAaX2CrHa7rWu54xOmJYbYfOPsX8A==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@opentui/core-linux-x64-musl@0.8.2':
+    resolution: {integrity: sha512-vicHTwx+jUFNcI39e6pK+hkjAhv33ebqmm0YpHHek9t3tY1PoWY6YfgI4jZVqVzcckJ7i3r3Nnl3x2YB94UUhw==}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@opentui/core-linux-x64@0.8.2':
+    resolution: {integrity: sha512-R6SUsvcQdeVuVSdGIOYcAFrCdGGeAxzT2pJ7KT9LK6Tg0pELszpnC+FmRDiofMUz88VSjXP95NygBZx+SAvnuA==}
+    cpu: [x64]
+    os: [linux]
+
+  '@opentui/core-win32-arm64@0.8.2':
+    resolution: {integrity: sha512-pGXmxoPcoNMRVm5DGX0+U7kwtm21Ubh+qJ5tz+kVk5LnuBiBhpkWDp2L+OjYmu9D57NrQbKhj0Tvrtu/SzdXaA==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@opentui/core-win32-x64@0.8.2':
+    resolution: {integrity: sha512-Tc7eNcNSlkHPB1p/9NBqQkexq/vznOPzB6V7G/kGq08y5LtOXPL0zLMJoIMNV/l52gNvv/YEi6mcBLLnpkD9Rg==}
+    cpu: [x64]
+    os: [win32]
+
+  '@opentui/core@0.8.2':
+    resolution: {integrity: sha512-Ko6BfyIiCWjm/15nfgBW7aWS+jkZ+Lh16PaEecawWRnhKo7H0BsJGhnpOe/BVcrnBI7bzLgMIP5cWyDffWEP7w==}
+    engines: {bun: '>=1.3.14', node: '>=26.4.0'}
+    peerDependencies:
+      web-tree-sitter: 0.25.10
+
   '@scalar/openapi-types@0.8.0':
     resolution: {integrity: sha512-WmaxVSfvY5K/TwcG2B2TU1WOe1As1uc2s7myswtP6dBlcjU3hM08SApxv/jmyGaCE8t4gO5BBhmHY4pDUfmr2g==}
     engines: {node: '>=22'}
@@ -703,6 +762,11 @@ packages:
   before-after-hook@4.0.0:
     resolution: {integrity: sha512-q6tR3RPqIB1pMiTRMFcZwuG5T8vwp+vUvEG0vuI6B+Rikh5BfPp2fQ82c925FOs+b0lcFQ8CFrL+KbilfZFhOQ==}
 
+  bun-ffi-structs@0.3.1:
+    resolution: {integrity: sha512-3gM7PpVWLyrwxWjcilSiGuhWanhZivvo6l0u573NziPH6f/gwk6McbaYgn7oJWov6pKGRTDbrg94W5DcJsKTtQ==}
+    peerDependencies:
+      typescript: ^5
+
   chalk@6.0.1:
     resolution: {integrity: sha512-/Ce6KNm3vIbWdMlNna6RVIZ/ICQxnJxCicet5LBKK9ZffBkqzDw0xh9EiKSljdRtiIQ1S1z4YgcscUUGzNCWrA==}
     engines: {node: '>=22'}
@@ -737,6 +801,17 @@ packages:
   convert-to-spaces@2.0.1:
     resolution: {integrity: sha512-rcQ1bsQO9799wq24uE5AM2tAILy4gXGIK/njFWcVQkGNZ96edlpY+A7bjwvzjYvLDyzmG1MmMLZhpcsb+klNMQ==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+
+  diff@9.0.0:
+    resolution: {integrity: sha512-svtcdpS8CgJyqAjEQIXdb3OjhFVVYjzGAPO8WGCmRbrml64SPw/jJD4GoE98aR7r25A0XcgrK3F02yw9R/vhQw==}
+    engines: {node: '>=0.3.1'}
+
+  emoji-regex@10.6.0:
+    resolution: {integrity: sha512-toUI84YS5YmxW219erniWD0CIVOo46xGKColeNQRgOzDorgBi1v4D71/OFzgD9GO2UGKIv1C3Sp8DAn0+j5w7A==}
+
+  entities@6.0.1:
+    resolution: {integrity: sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g==}
+    engines: {node: '>=0.12'}
 
   environment@1.1.0:
     resolution: {integrity: sha512-xUtoPkMggbz0MPyPiIWr1Kp4aeWJjDZ6SMvURhimjdZgsRuDplF5/s9hcgGhyXMhs+6vpnuoiZ2kFiu3FMnS8Q==}
@@ -829,6 +904,11 @@ packages:
   json-with-bigint@3.5.12:
     resolution: {integrity: sha512-uwbF/wSSuOgC7qqlq27Xp5B6a2MHVug3t0idZdTqu0JnlFvgJuH7ju+KAk/J06C7GfhoYy2gnb9wz2INqcne7w==}
 
+  marked@17.0.1:
+    resolution: {integrity: sha512-boeBdiS0ghpWcSwoNm/jJBwdpFaMnZWRzjA6SkUMYb40SVaN1x7mmfGKp0jvexGcx+7y2La5zRZsYFZI6Qpypg==}
+    engines: {node: '>= 20'}
+    hasBin: true
+
   mimic-fn@2.1.0:
     resolution: {integrity: sha512-OqbOk5oEQeAZ8WXWydlu9HJjz9WVdEIvamMCcXmuqUYjTknH/sqsWvhQ3vgwKFRR1HpjvNBKQ37nbJgYzGqGcg==}
     engines: {node: '>=6'}
@@ -844,6 +924,9 @@ packages:
   papaparse@5.7.0:
     resolution: {integrity: sha512-qBGxg/7Q3Kl9Wfhrz2Z74UnvnHTXLNG6jmKJFeBvP2+y4lV7So+7SR62+Zd47JvdrCkX+nDcnr0ObPzek/+6RA==}
 
+  parse5@8.0.0:
+    resolution: {integrity: sha512-9m4m5GSgXjL4AjumKzq1Fgfp3Z8rsvjRNbnkVwfu2ImRqE5D0LnY2QfDen18FSY9C573YU5XxSapdHZTZ2WolA==}
+
   patch-console@2.0.0:
     resolution: {integrity: sha512-0YNdUceMdaQwoKce1gatDScmMo5pu/tfABfnzEqeG0gtTmd7mh/WcwgUjtAeOU7N8nFFlbQBnFK2gXW5fGvmMA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
@@ -854,6 +937,11 @@ packages:
 
   pend@1.2.0:
     resolution: {integrity: sha512-F3asv42UuXchdzt+xXqfW1OGlVBe+mxa2mqI0pg5yAHZPvFmY3Y6drSf/GQ1A86WgWEN9Kzh/WrgKa6iGcHXLg==}
+
+  playwright-core@1.56.1:
+    resolution: {integrity: sha512-hutraynyn31F+Bifme+Ps9Vq59hKuUCz7H1kDOcBs+2oGguKkWTU50bBWrtz34OUWmIwpBTWDxaRPXrIXkgvmQ==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   quick-lru@7.3.0:
     resolution: {integrity: sha512-k9lSsjl36EJdK7I06v7APZCbyGT2vMTsYSRX1Q2nbYmnkBqgUhRkAuzH08Ciotteu/PLJmIF2+tti7o3C/ts2g==}
@@ -911,6 +999,10 @@ packages:
     resolution: {integrity: sha512-XlkWvfIm6RmsWtNJx+uqtKLS8eqFbxUg0ZzLXqY0caEy9l7hruX8IpiDnjsLavoBgqCCR71TqWO8MaXYheJ3RQ==}
     engines: {node: '>=10'}
 
+  string-width@7.2.0:
+    resolution: {integrity: sha512-tsaTIkKW9b4N+AEj+SVA+WhJzV7/zMhcSu78mLKWSk7cXMOSHsBKFWUs0fWwq8QyK3MgJBQRX6Gbi4kYbdvGkQ==}
+    engines: {node: '>=18'}
+
   string-width@8.3.0:
     resolution: {integrity: sha512-ZbmZM0JCihQN91dWnxoipT2KOEyHqEyfRXUyjuRhW8b/xnqPDoq4gWEVApTVa9db2wN8mmoikgFBbjh71+cGeQ==}
     engines: {node: '>=20'}
@@ -949,6 +1041,14 @@ packages:
 
   universal-user-agent@7.0.3:
     resolution: {integrity: sha512-TmnEAEAsBJVZM/AADELsK76llnwcf9vMKuPz8JflO1frO8Lchitr0fNaN9d+Ap0BjKtqWqd/J17qeDnXh8CL2A==}
+
+  web-tree-sitter@0.25.10:
+    resolution: {integrity: sha512-Y09sF44/13XvgVKgO2cNDw5rGk6s26MgoZPXLESvMXeefBf7i6/73eFurre0IsTW6E14Y0ArIzhUMmjoc7xyzA==}
+    peerDependencies:
+      '@types/emscripten': ^1.40.0
+    peerDependenciesMeta:
+      '@types/emscripten':
+        optional: true
 
   widest-line@6.0.0:
     resolution: {integrity: sha512-U89AsyEeAsyoF0zVJBkG9zBgekjgjK7yk9sje3F4IQpXBJ10TF6ByLlIfjMhcmHMJgHZI4KHt4rdNfktzxIAMA==}
@@ -1346,6 +1446,49 @@ snapshots:
   '@openai/codex@0.166.0-win32-x64':
     optional: true
 
+  '@opentui/core-darwin-arm64@0.8.2':
+    optional: true
+
+  '@opentui/core-darwin-x64@0.8.2':
+    optional: true
+
+  '@opentui/core-linux-arm64-musl@0.8.2':
+    optional: true
+
+  '@opentui/core-linux-arm64@0.8.2':
+    optional: true
+
+  '@opentui/core-linux-x64-musl@0.8.2':
+    optional: true
+
+  '@opentui/core-linux-x64@0.8.2':
+    optional: true
+
+  '@opentui/core-win32-arm64@0.8.2':
+    optional: true
+
+  '@opentui/core-win32-x64@0.8.2':
+    optional: true
+
+  '@opentui/core@0.8.2(typescript@5.9.3)(web-tree-sitter@0.25.10)':
+    dependencies:
+      bun-ffi-structs: 0.3.1(typescript@5.9.3)
+      diff: 9.0.0
+      marked: 17.0.1
+      string-width: 7.2.0
+      web-tree-sitter: 0.25.10
+    optionalDependencies:
+      '@opentui/core-darwin-arm64': 0.8.2
+      '@opentui/core-darwin-x64': 0.8.2
+      '@opentui/core-linux-arm64': 0.8.2
+      '@opentui/core-linux-arm64-musl': 0.8.2
+      '@opentui/core-linux-x64': 0.8.2
+      '@opentui/core-linux-x64-musl': 0.8.2
+      '@opentui/core-win32-arm64': 0.8.2
+      '@opentui/core-win32-x64': 0.8.2
+    transitivePeerDependencies:
+      - typescript
+
   '@scalar/openapi-types@0.8.0': {}
 
   '@toon-format/toon@2.3.1': {}
@@ -1377,6 +1520,10 @@ snapshots:
 
   before-after-hook@4.0.0: {}
 
+  bun-ffi-structs@0.3.1(typescript@5.9.3):
+    dependencies:
+      typescript: 5.9.3
+
   chalk@6.0.1: {}
 
   chardet@2.2.0: {}
@@ -1401,6 +1548,12 @@ snapshots:
   content-type@3.1.1: {}
 
   convert-to-spaces@2.0.1: {}
+
+  diff@9.0.0: {}
+
+  emoji-regex@10.6.0: {}
+
+  entities@6.0.1: {}
 
   environment@1.1.0: {}
 
@@ -1517,6 +1670,8 @@ snapshots:
 
   json-with-bigint@3.5.12: {}
 
+  marked@17.0.1: {}
+
   mimic-fn@2.1.0: {}
 
   mute-stream@3.0.0: {}
@@ -1527,6 +1682,10 @@ snapshots:
 
   papaparse@5.7.0: {}
 
+  parse5@8.0.0:
+    dependencies:
+      entities: 6.0.1
+
   patch-console@2.0.0: {}
 
   pdfjs-dist@6.4.299:
@@ -1534,6 +1693,8 @@ snapshots:
       '@napi-rs/canvas': 1.1.0
 
   pend@1.2.0: {}
+
+  playwright-core@1.56.1: {}
 
   quick-lru@7.3.0: {}
 
@@ -1576,6 +1737,12 @@ snapshots:
     dependencies:
       escape-string-regexp: 2.0.0
 
+  string-width@7.2.0:
+    dependencies:
+      emoji-regex: 10.6.0
+      get-east-asian-width: 1.7.0
+      strip-ansi: 7.2.0
+
   string-width@8.3.0:
     dependencies:
       get-east-asian-width: 1.7.0
@@ -1606,6 +1773,8 @@ snapshots:
   undici-types@6.21.0: {}
 
   universal-user-agent@7.0.3: {}
+
+  web-tree-sitter@0.25.10: {}
 
   widest-line@6.0.0:
     dependencies:

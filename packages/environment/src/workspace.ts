@@ -1,6 +1,6 @@
-import { cp, mkdir, readdir, lstat, realpath, access } from 'node:fs/promises';
+import { cp, mkdir, readdir, lstat, realpath, access, readFile, appendFile } from 'node:fs/promises';
 import { join, resolve, relative, isAbsolute, sep } from 'node:path';
-import { addWorktree } from './git-worktree.js';
+import { addWorktree, worktreeMetadata } from './git-worktree.js';
 import { runProcess } from './process-manager.js';
 export async function prepareWorkspace(repositoryPath: string, destination: string): Promise<string> {
   const source = await realpath(repositoryPath);
@@ -43,6 +43,16 @@ export async function prepareWorkspace(repositoryPath: string, destination: stri
   return target;
 }
 export async function captureDiff(workspacePath: string): Promise<string> {
+  // Keep generated dependencies/task metadata out of the private Git index.
+  // This edits only the task's private Git metadata, never the selected project.
+  const common = await worktreeMetadata(workspacePath);
+  const metadata = common ?? join(workspacePath, '.git');
+  if (!common) { const info = await lstat(metadata); if (!info.isDirectory() || info.isSymbolicLink()) throw new Error('Unsafe standalone Git metadata'); }
+  const exclude = join(metadata, 'info', 'exclude');
+  const rules = await readFile(exclude, 'utf8').catch(() => '');
+  if (!rules.includes('# CTX generated state')) await appendFile(exclude, '\n# CTX generated state\nnode_modules/\n.harness/\n');
+  const reset = await runProcess('git', ['reset', '-q', 'HEAD'], workspacePath);
+  if (reset.code !== 0) throw new Error(reset.output);
   // Include new files as well as tracked edits, without modifying the source repo.
   const stage = await runProcess('git', ['add', '-A'], workspacePath);
   if (stage.code !== 0) throw new Error(stage.output);
@@ -50,4 +60,12 @@ export async function captureDiff(workspacePath: string): Promise<string> {
   if (diff.code !== 0) throw new Error(diff.output);
   if (diff.truncated) throw new Error('Diff exceeds the 1,000,000 character evidence limit; inspect the retained workspace.');
   return diff.output;
+}
+
+export async function changedPaths(workspace: string): Promise<{ paths: string[]; deleted: string[] }> {
+  const result = await runProcess('git', ['diff', '--cached', '--name-status', '--no-renames', '-z', 'HEAD'], workspace);
+  if (result.code !== 0 || result.truncated) throw new Error(`Cannot enumerate changed files: ${result.output}`);
+  const parts = result.output.split('\0').filter(Boolean); const paths: string[] = []; const deleted: string[] = [];
+  for (let index = 0; index < parts.length; index += 2) { if (!parts[index + 1]) throw new Error('Malformed changed-file list'); paths.push(parts[index + 1]); if (parts[index] === 'D') deleted.push(parts[index + 1]); }
+  return { paths, deleted };
 }

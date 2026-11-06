@@ -9,6 +9,7 @@ import { runProcess } from './process-manager.js';
 import { worktreeMetadata } from './git-worktree.js';
 import { classifyFailure } from './failure-classifier.js';
 import { installCommand } from './service-detector.js';
+import { DockerEnvironmentError, dockerFailure } from './docker-diagnostics.js';
 import { inspectOwned, sandboxArgs, LocalDockerDriver } from './docker.js';
 import { EnvironmentUnavailable, type DockerDriver, type EnvironmentState, type EnvironmentConfig, type ManagedResource, type CommandRunner, type RecoveryAttempt } from './types.js';
 export interface EnvironmentHooks {
@@ -25,6 +26,10 @@ export function createEnvironmentState(taskId: string, config: EnvironmentConfig
 export class EnvironmentManager implements CommandRunner {
   constructor(private readonly taskId: string, private readonly workspace: string, private readonly directory: string, private readonly hooks: EnvironmentHooks, private readonly driver: DockerDriver = new LocalDockerDriver()) {}
   private get state() { return this.hooks.get(); }
+  get canExecuteCommands() { return this.mode !== 'filesystem'; }
+  get supportsBuiltInBrowser() { return this.mode === 'host'; }
+  async ensureCommandBackend(signal?: AbortSignal): Promise<void> { if (this.mode !== 'filesystem') return; try { await this.prepareDocker(signal); } catch (error) { if (signal?.aborted || !(error instanceof EnvironmentUnavailable) || this.state.config.mode !== 'auto' || !this.state.config.allowHostFallback || this.state.resources.length || this.state.config.services.postgres || this.state.config.services.mock) throw error; this.update('selection.fallback', { explicitlyAllowed: true, reason: String(error) }, state => { state.selectedMode = 'host'; state.ready = true; state.limitations.push('Host verification explicitly permitted after generated project commands were discovered.'); }); } }
+  private get mode() { return this.state.selectedMode ?? (this.state.config.mode === 'auto' ? 'docker' : this.state.config.mode); }
   private update(type: string, data: unknown, mutate: (state: EnvironmentState) => void) { this.hooks.update(`environment.${type}`, data, mutate); }
   private resource(name: string, kind: ManagedResource['kind'], purpose: string): ManagedResource {
     const existing = this.state.resources.find(resource => resource.name === name);
@@ -39,7 +44,24 @@ export class EnvironmentManager implements CommandRunner {
     return result.output;
   }
   async prepare(signal?: AbortSignal): Promise<void> {
-    if (this.state.config.mode === 'host') { this.update('ready', { mode: 'host' }, state => { state.ready = true; }); return; }
+    const config = this.state.config;
+    if (this.state.selectedMode === 'filesystem' || config.mode === 'auto' && config.lightweight && !config.services.postgres && !config.services.mock) {
+      this.update('selected', { mode: 'filesystem', reason: 'Deterministic filesystem acceptance; the verification backend executes no project commands.' }, state => { state.selectedMode = 'filesystem'; state.selectionReason = 'Deterministic filesystem acceptance; the verification backend executes no project commands.'; state.ready = true; }); return;
+    }
+    if (this.mode === 'host') {
+      this.update('selected', { mode: 'host', explicit: config.mode === 'host' }, state => { state.selectedMode = 'host'; state.ready = true; }); return;
+    }
+    try { await this.prepareDocker(signal); }
+    catch (error) {
+      if (signal?.aborted || !(error instanceof EnvironmentUnavailable)) throw error;
+      if (config.mode !== 'auto' || !config.allowHostFallback || config.services.postgres || config.services.mock || this.state.resources.length) throw error;
+      this.update('selection.fallback', { mode: 'host', reason: String(error), diagnostic: error instanceof DockerEnvironmentError ? error.diagnostic : undefined, explicitlyAllowed: true }, state => {
+        state.selectedMode = 'host'; state.ready = true; state.selectionReason = String(error);
+        state.limitations.push('Docker unavailable; host verification selected with explicit allowHostFallback permission. Host project commands use current user permissions and are not container-isolated.');
+      });
+    }
+  }
+  private async prepareDocker(signal?: AbortSignal): Promise<void> {
     if (this.driver.kind === 'simulated' && !this.state.limitations.some(item => item.includes('simulated'))) this.update('adapter.simulated', {}, state => { state.limitations.push('Docker driver is simulated; no live Docker or PostgreSQL integration was verified.'); });
     await this.command(['info', '--format', '{{.ServerVersion}}'], signal);
     // Provision before spending a model turn. Image/cache failures must not be
@@ -48,7 +70,7 @@ export class EnvironmentManager implements CommandRunner {
       const found = await this.driver.command(['image', 'inspect', image], signal);
       if (found.code === 0 && !found.timedOut) continue;
       if (found.timedOut || !/No such image|image[^\n]*not found/i.test(found.output)) throw new EnvironmentUnavailable(`Cannot inspect Docker image ${image}: ${redact(found.output)}`);
-      if (!this.state.config.allowImagePull) throw new EnvironmentUnavailable(`Docker image ${image} unavailable. Preload it or explicitly enable image pulls. ${redact(found.output)}`);
+      if (!this.state.config.allowImagePull) throw dockerFailure('image-missing', 'image inspect', `Docker image ${image} unavailable. ${redact(found.output)}`, `Preload ${image} with an approved docker pull, or explicitly enable --allow-image-pull. No image was downloaded.`);
       this.update('image.pull.intent', { image }, () => {});
       const pulled = await this.driver.command(['pull', image], signal, 120_000);
       if (pulled.code !== 0 || pulled.timedOut) throw new EnvironmentUnavailable(`Docker image ${image} provisioning failed: ${redact(pulled.output)}`);
@@ -65,10 +87,11 @@ export class EnvironmentManager implements CommandRunner {
       if (!resource || !(await inspectOwned(this.driver, this.taskId, resource, signal))?.State?.Running) throw new EnvironmentUnavailable(`Recovered dependency ${dependency.name} is no longer running; refusing to silently reset its data`);
       await this.health(resource, signal);
     }
-    this.update('ready', { mode: 'docker' }, state => { state.ready = true; });
+    this.update('ready', { mode: 'docker' }, state => { state.ready = true; state.selectedMode = 'docker'; });
   }
   async run(command: string, signal?: AbortSignal, timeoutMs?: number): Promise<ProcessResult> {
-    if (this.state.config.mode === 'host') return runProcess('/bin/sh', ['-c', command], this.workspace, { signal, timeoutMs });
+    if (this.mode === 'filesystem') throw new EnvironmentUnavailable('Filesystem-only backend refuses project commands');
+    if (this.mode === 'host') return runProcess('/bin/sh', ['-c', command], this.workspace, { signal, timeoutMs });
     return this.runSandbox(command, 'check', signal, timeoutMs);
   }
   private async runSandbox(command: string, purpose: 'check' | 'install', signal?: AbortSignal, timeoutMs?: number): Promise<ProcessResult> {
@@ -78,7 +101,7 @@ export class EnvironmentManager implements CommandRunner {
     const args = sandboxArgs(this.state.config, this.workspace, this.state.network, name, this.taskId, purpose, this.state.variables, git, purpose === 'install');
     try {
       const result = await this.driver.command([...args, this.state.config.image, '/bin/sh', '-c', command], signal, timeoutMs);
-      if (result.code === 125) throw new EnvironmentUnavailable(`Docker could not start the ${purpose} sandbox: ${redact(result.output)}`);
+      if (result.code === 125) throw dockerFailure('container-startup-failed', 'run', `Docker could not start the ${purpose} sandbox: ${redact(result.output)}`, 'Inspect the retained command output, image compatibility, bind mounts and daemon resource limits. No workload ran; do not repair application code for this infrastructure failure.');
       return result;
     }
     finally { await this.remove(resource); }
@@ -129,9 +152,10 @@ export class EnvironmentManager implements CommandRunner {
     });
   }
   async recover(checks: CheckResult[], signal?: AbortSignal): Promise<'recovered' | 'blocked' | 'not-applicable'> {
-    if (this.state.config.mode === 'host') return 'not-applicable';
+    if (this.mode === 'filesystem') return 'not-applicable';
     const failures = await Promise.all(checks.filter(check => check.status === 'failed').map(async check => classifyFailure(await readFile(check.artifact, 'utf8'))));
     const failure = failures.find(item => item.kind !== 'unknown'); if (!failure) return 'not-applicable';
+    if (this.mode === 'host' && failure.kind !== 'missing-dependency') return 'not-applicable';
     const fail = (reason: string) => { this.update('recovery.blocked', { kind: failure.kind, reason }, state => { state.limitations.push(reason); }); return 'blocked' as const; };
     if (this.state.activeRecovery !== undefined) return fail('An environment recovery has an unknown interrupted outcome; inspect managed resources before another attempt.');
     if (this.state.remainingRecoveryAttempts === 0 || this.state.recoveries.some(attempt => attempt.kind === failure.kind)) return fail(`Recovery budget exhausted or ${failure.kind} already attempted; refusing repeated unsuccessful recovery.`);
@@ -157,7 +181,9 @@ export class EnvironmentManager implements CommandRunner {
         if (await readFile(join(this.workspace, '.env'), 'utf8') !== content) throw new EnvironmentUnavailable('Generated development environment did not validate');
       } else if (failure.kind === 'missing-dependency') {
         const command = await installCommand(this.workspace); if (!command) throw new EnvironmentUnavailable('No supported frozen lockfile; dependency recovery cannot safely choose an install command');
-        const result = await this.runSandbox(command, 'install', signal, 120_000); log += result.output;
+        const result = this.mode === 'host'
+          ? await runProcess('/bin/sh', ['-c', command], this.workspace, { signal, timeoutMs: 120_000 })
+          : await this.runSandbox(command, 'install', signal, 120_000); log += result.output;
         if (result.code !== 0 || result.timedOut) throw new EnvironmentUnavailable('Frozen dependency installation failed');
       }
       passed = true; log += '\nRecovery action passed; rerunning required build and tests to verify application behavior.\n';
@@ -173,7 +199,7 @@ export class EnvironmentManager implements CommandRunner {
     return passed ? 'recovered' : 'blocked';
   }
   async cleanup(): Promise<void> {
-    if (this.state.config.mode === 'host') return;
+    if (this.mode !== 'docker') return;
     for (const resource of [...this.state.resources].reverse()) if (resource.status !== 'removed') await this.remove(resource);
   }
   private async remove(resource: ManagedResource): Promise<void> {

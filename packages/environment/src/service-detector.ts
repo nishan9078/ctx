@@ -29,14 +29,15 @@ export async function detectEnvironment(repository: string, options: Environment
   if (Object.keys(services).some(key => !['postgres', 'mock'].includes(key)) || (services.postgres !== undefined && typeof services.postgres !== 'boolean')) throw new Error('Unsupported environment service');
   const mock = services.mock === undefined ? undefined : validateMock(services.mock);
   const config: EnvironmentConfig = {
-    mode: options.mode ?? 'docker', image: options.image ?? 'node:22-bookworm-slim',
+    mode: options.mode ?? 'docker', allowHostFallback: options.allowHostFallback ?? false, lightweight: options.lightweight ?? false, image: options.image ?? 'node:22-bookworm-slim',
     allowImagePull: options.allowImagePull ?? false, allowDependencyInstall: options.allowDependencyInstall ?? false,
     maxRecoveryAttempts: options.maxRecoveryAttempts ?? 3, services: { postgres: services.postgres, mock },
     envKeys: [...new Set([...example.matchAll(/^\s*(?:export\s+)?([A-Z][A-Z0-9_]*)\s*=/gm)].map(match => match[1]).filter(safeKey))],
   };
-  if (!['docker', 'host'].includes(config.mode) || !/^[a-zA-Z0-9][a-zA-Z0-9_.\/:@-]{0,200}$/.test(config.image)) throw new Error('Invalid execution mode or Docker image');
+  if (!['docker', 'host', 'auto'].includes(config.mode) || !/^[a-zA-Z0-9][a-zA-Z0-9_.\/:@-]{0,200}$/.test(config.image)) throw new Error('Invalid execution mode or Docker image');
+  if (typeof config.allowHostFallback !== 'boolean' || typeof config.lightweight !== 'boolean') throw new Error('Invalid backend selection permissions');
   if (typeof config.allowImagePull !== 'boolean' || typeof config.allowDependencyInstall !== 'boolean' || !Number.isInteger(config.maxRecoveryAttempts) || config.maxRecoveryAttempts < 0 || config.maxRecoveryAttempts > 10) throw new Error('Invalid environment permissions or recovery budget');
-  if (config.mode === 'host' && (services.postgres || mock || config.allowDependencyInstall)) throw new Error('Disposable services and dependency recovery require Docker mode');
+  if (config.mode === 'host' && (services.postgres || mock)) throw new Error('Disposable services require Docker mode');
   return config;
 }
 export async function installCommand(workspace: string): Promise<string | undefined> {
