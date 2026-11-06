@@ -5,10 +5,27 @@ import { schema } from './schema.js';
 import { redact } from '../../shared/src/redact.js';
 import { assertTransition, assertStepTransition } from '../../shared/src/legacy-transitions.js';
 import type { TaskRecord } from './task-record.js';
+import { closeSync, constants, existsSync, fstatSync, openSync, readSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 export interface StoredEvent { sequence: number; timestamp: string; type: string; data: unknown }
 export class TaskStore {
   readonly db: DatabaseSync;
   constructor(path: string) {
+    const marker = join(dirname(path), 'restore-info.json');
+    if (existsSync(marker)) {
+      let archived = true;
+      let handle: number | undefined;
+      try {
+        handle = openSync(marker, constants.O_RDONLY | constants.O_NOFOLLOW); const info = fstatSync(handle);
+        if (!info.isFile() || info.size > 8 * 1024 * 1024) throw new Error('Invalid restore metadata');
+        const buffer = Buffer.alloc(info.size + 1); let total = 0;
+        while (total < buffer.length) { const count = readSync(handle, buffer, total, buffer.length - total, null); if (!count) break; total += count; }
+        if (total !== info.size) throw new Error('Restore metadata changed');
+        const value = JSON.parse(buffer.subarray(0, total).toString('utf8')) as { legacyArchivedIds?: unknown };
+        archived = !Array.isArray(value.legacyArchivedIds) || value.legacyArchivedIds.length > 0;
+      } catch { /* Unknown recovery state remains blocked. */ } finally { if (handle !== undefined) closeSync(handle); }
+      if (archived) throw new Error('Restored legacy tasks are archived for review. Inspect restore-info.json and preserved legacy evidence; explicitly reconcile worktrees and process ownership before enabling the legacy runner.');
+    }
     this.db = new DatabaseSync(path);
     const version = this.db.prepare('PRAGMA user_version').get() as { user_version: number };
     if (version.user_version > 3) { this.db.close(); throw new Error('Unsupported database schema version'); }

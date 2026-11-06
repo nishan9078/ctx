@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { createHash, randomUUID } from 'node:crypto';
 import { realpath, stat } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import { openOrchestrationDatabase } from './migrations.js';
 import type { CommandActor, Notification, TaskSnapshot, TaskState } from '../../shared/src/domain.js';
 import { taskStates } from '../../shared/src/domain.js';
@@ -9,6 +10,8 @@ import { CtxError, ValidationError } from '../../shared/src/errors.js';
 import { choice, identifier, integer, keys, list, parseTaskSpec, record, serializeTaskSpec, text, validateTaskSpec } from '../../shared/src/validation.js';
 import { assertTaskTransition } from '../../shared/src/transitions.js';
 import { redactForDiagnostics } from '../../shared/src/redact.js';
+import { artifactPolicy, type ArtifactRecord } from '../../shared/src/artifacts.js';
+import { recordedManifestHash, sha256, validateArtifact, verifyArtifact } from './artifact-files.js';
 
 interface TaskRow { id: string; project_id: string; spec_json: string; state: string; priority: string; revision: number; reason: string | null; next_run_at: string | null; created_at: string; updated_at: string }
 interface ProjectRow { id: string; canonical_path: string; policy_id: string; test_profile: string; created_at: string }
@@ -19,10 +22,10 @@ const revision = (value: unknown): number => integer(value, 1, Number.MAX_SAFE_I
 export class TaskRepository {
   readonly #db: DatabaseSync;
   readonly #env: NodeJS.ProcessEnv;
-  private constructor(db: DatabaseSync, env: NodeJS.ProcessEnv, readonly migrationBackupPath?: string) { this.#db = db; this.#env = env; }
+  private constructor(db: DatabaseSync, env: NodeJS.ProcessEnv, readonly dataDirectory: string, readonly migrationBackupPath?: string) { this.#db = db; this.#env = env; }
   static async open(filename: string, env: NodeJS.ProcessEnv = process.env): Promise<TaskRepository> {
     const opened = await openOrchestrationDatabase(filename);
-    return new TaskRepository(opened.db, { ...env }, opened.backupPath);
+    return new TaskRepository(opened.db, { ...env }, dirname(resolve(filename)), opened.backupPath);
   }
   close(): void { this.#db.close(); }
   private safeText(value: unknown, path: string, max = 10_000): string {
@@ -209,5 +212,31 @@ export class TaskRepository {
   pendingNotifications(limit = 100): Notification[] {
     integer(limit, 1, 100, 'limit');
     return (this.#db.prepare('SELECT id FROM ctx_outbox WHERE delivered_at IS NULL ORDER BY created_at,id LIMIT ?').all(limit) as { id: string }[]).map(row => this.getNotification(row.id));
+  }
+  artifacts(taskId?: string): ArtifactRecord[] {
+    if (taskId !== undefined) identifier(taskId, 'taskId');
+    const rows = this.#db.prepare('SELECT * FROM ctx_artifacts WHERE (? IS NULL OR task_id=?) ORDER BY id LIMIT ?').all(taskId ?? null, taskId ?? null, artifactPolicy.maxBackupFiles + 1) as { id: string; task_id: string; attempt_id: string | null; kind: string; location: string; sha256: string; bytes: number; created_at: string }[];
+    if (rows.length > artifactPolicy.maxBackupFiles) throw new CtxError('BUDGET_EXHAUSTED', 'Artifact query exceeds the file budget');
+    return rows.map(row => validateArtifact({ id: row.id, taskId: row.task_id, ...(row.attempt_id === null ? {} : { attemptId: row.attempt_id }), kind: row.kind, location: row.location, sha256: row.sha256, bytes: row.bytes, createdAt: row.created_at }));
+  }
+  async recordArtifact(input: ArtifactRecord, context: CommandActor): Promise<ArtifactRecord> {
+    const descriptor = validateArtifact(input); const actor = this.actor(context); this.label(descriptor.kind, 'artifact.kind');
+    const manifest = await verifyArtifact(this.dataDirectory, descriptor);
+    const manifestSha256 = sha256(JSON.stringify(manifest));
+    return this.write(() => {
+      this.getTask(descriptor.taskId);
+      const existing = this.artifacts(descriptor.taskId).find(item => item.id === descriptor.id);
+      if (existing) { if (JSON.stringify(existing) !== JSON.stringify(descriptor) || recordedManifestHash(this.#db, descriptor.id) !== manifestSha256) throw new CtxError('CONFLICT', 'Artifact identity is immutable'); return existing; }
+      const size = this.#db.prepare('SELECT COALESCE(SUM(bytes),0) AS bytes FROM ctx_artifacts WHERE task_id=?').get(descriptor.taskId) as { bytes: number };
+      if (size.bytes + descriptor.bytes > artifactPolicy.maxTaskBytes) throw new CtxError('BUDGET_EXHAUSTED', 'Task artifacts exceed the storage budget');
+      this.#db.prepare('INSERT INTO ctx_artifacts VALUES(?,?,?,?,?,?,?,?)').run(descriptor.id, descriptor.taskId, descriptor.attemptId ?? null, descriptor.kind, descriptor.location, descriptor.sha256, descriptor.bytes, descriptor.createdAt);
+      this.event('artifact', descriptor.id, 'artifact.recorded', actor, 'Published and hash-verified immutable artifact', { sha256: descriptor.sha256, manifestSha256, bytes: descriptor.bytes, kind: descriptor.kind }, descriptor.taskId);
+      return descriptor;
+    });
+  }
+  async verifyStoredArtifact(id: string) {
+    identifier(id, 'artifactId'); const artifact = this.artifacts().find(item => item.id === id);
+    if (!artifact) throw new CtxError('NOT_FOUND', 'Artifact does not exist');
+    return verifyArtifact(this.dataDirectory, artifact, recordedManifestHash(this.#db, id));
   }
 }

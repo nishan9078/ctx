@@ -87,7 +87,7 @@ export async function openOrchestrationDatabase(filename: string, steps: readonl
     db.close(); throw error;
   }
 }
-function verifyMigrationHistory(db: DatabaseSync, steps: readonly Migration[]): void {
+export function verifyMigrationHistory(db: DatabaseSync, steps: readonly Migration[] = migrations): void {
   const rows = db.prepare('SELECT version,name,sha256 FROM ctx_schema_migrations').all() as { version: number; name: string; sha256: string }[];
   if (!rows.some(row => row.version === currentSchemaVersion)) throw new CtxError('CONFLICT', 'Current schema lacks migration history');
   for (const row of rows) {

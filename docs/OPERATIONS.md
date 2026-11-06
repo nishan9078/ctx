@@ -1,5 +1,7 @@
 # Milestone 3 operations
 
+For versioned state/evidence backups and clean-directory restores, see [Backup and restore](BACKUP_RESTORE.md). Historical execution troubleshooting below remains a record of the prototype environment.
+
 Use a local Docker daemon whose bind mounts refer to the same filesystem as the CLI. Do not use a remote Docker context: the task worktree and private Git metadata must exist on the daemon host. The runtime needs permission to inspect/create/remove its labeled networks and containers. It does not start privileged daemons, mount Docker sockets into workloads, or change host Docker permissions.
 
 Preload **both** `node:22-bookworm-slim` and `postgres:16-bookworm` through your approved image workflow, or explicitly pass `--allow-image-pull`. With that permission, missing images are pulled and inspected again before coding or network/container creation. Socket/daemon inspection errors are not treated as cache misses and never trigger automatic permission changes or image pulls. Default verification has no external network access. If dependency recovery is desired, opt into `--allow-dependency-install`; a frozen lockfile is required. Prebuilt images should contain other language runtimes, build tools, and browsers needed by the repository.

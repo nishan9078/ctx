@@ -13,18 +13,30 @@ import { CodexSecurityAdapter } from '../../../packages/security/src/codex-secur
 import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { TaskStore } from '../../../packages/persistence/src/database.js';
+import { createBackup, restoreBackup } from '../../../packages/persistence/src/backup.js';
 export async function main(args = process.argv.slice(2)): Promise<number> {
   const { values, positionals } = parseArgs({ args, allowPositionals: true, options: {
     repo: { type: 'string', default: '.' }, acceptance: { type: 'string' }, typecheck: { type: 'string' }, 'security-check': { type: 'string' }, 'browser-check': { type: 'string' }, confirm: { type: 'string' }, 'allow-host-fallback': { type: 'boolean' }, output: { type: 'string' }, build: { type: 'string' }, test: { type: 'string' },
     execution: { type: 'string' }, image: { type: 'string' }, services: { type: 'string' }, 'max-recoveries': { type: 'string' }, 'allow-image-pull': { type: 'boolean' }, 'allow-dependency-install': { type: 'boolean' },
     model: { type: 'string' }, timeout: { type: 'string' }, plan: { type: 'string' }, 'max-repairs': { type: 'string' },
-    plain: { type: 'boolean' }, version: { type: 'boolean', short: 'v' }, help: { type: 'boolean', short: 'h' },
+    database: { type: 'string' }, plain: { type: 'boolean' }, version: { type: 'boolean', short: 'v' }, help: { type: 'boolean', short: 'h' },
   } });
   const [command, argument] = positionals;
   if (values.version) { console.log('ctx 0.1.0'); return 0; }
   if (values.help) {
+    console.log('Storage: ctx backup <new-directory> --database <sqlite-file>\n         ctx restore <backup-directory> --output <new-directory>');
     console.log('ctx — local engineering workspace\nUsage: ctx [--repo path]              Open the terminal interface (--plain for line mode)\n       ctx doctor                    Check local prerequisites\n       ctx login                     Sign in to the connected provider\n       ctx security --repo path      Run an explicit security review\n\nctx run "request" --repo . [--build "command"] [--test "command"] [--output path] [--model model] [--timeout seconds] [--plan plan.json] [--max-repairs 0] [--execution docker|host|auto] [--allow-host-fallback] [--acceptance criteria.json] [--typecheck command] [--security-check command] [--browser-check command] [--image image] [--services services.json] [--max-recoveries 3] [--allow-image-pull] [--allow-dependency-install]\nctx status [task-id] --repo . [--output path]\nctx resume <task-id> --repo . [--output path]\nctx logs <task-id> --repo . [--output path]\nctx diff <task-id> --repo . [--output path]\nctx apply <task-id> --repo . [--confirm preview-token]'); return 0;
   }
+  if (command === 'backup' || command === 'restore') {
+    if (positionals.length !== 2 || !argument || (command === 'backup' ? !values.database || values.output !== undefined : !values.output || values.database !== undefined)) throw new Error('Use ctx backup <new-directory> --database <sqlite-file>, or ctx restore <backup-directory> --output <new-directory>');
+    for (const [name, value] of Object.entries(values)) if (value !== undefined && !['repo', command === 'backup' ? 'database' : 'output'].includes(name)) throw new Error('Backup/restore accepts only its documented storage options');
+    if (command === 'backup') {
+      const result = await createBackup(values.database!, argument);
+      console.log(JSON.stringify({ directory: result.directory, manifest: join(result.directory, 'snapshot', 'manifest.json'), files: result.manifest.files.length }, null, 2));
+    } else console.log(JSON.stringify(await restoreBackup(argument, values.output!), null, 2));
+    return 0;
+  }
+  if (values.database !== undefined) throw new Error('--database is only supported by ctx backup');
   if (!command || command === 'ui') {
     if (command === 'ui' && positionals.length > 1) throw new Error('Use ctx ui --repo path');
     if (values.execution && !['docker', 'host', 'auto'].includes(values.execution)) throw new Error('Execution must be docker, host or auto');

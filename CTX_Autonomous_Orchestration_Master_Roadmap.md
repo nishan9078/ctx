@@ -1109,12 +1109,12 @@ Type contracts, validation library, config schema, error taxonomy, ADRs, unit te
 - [x] `P02-05` Implement optimistic version checks or equivalent compare-and-swap for task updates.
 - [x] `P02-06` Enforce unique task IDs, deduplication keys, valid project IDs, and DAG cycle detection.
 - [x] `P02-07` Implement durable event append on every transition with actor and timestamp.
-- [ ] `P02-08` Implement artifact writer with atomic temp-file + rename and SHA-256 manifest.
-- [ ] `P02-09` Add DB backup/restore command and automatic migration backup.
+- [x] `P02-08` Implement artifact writer with atomic temp-file + rename and SHA-256 manifest.
+- [x] `P02-09` Add DB backup/restore command and automatic migration backup.
 - [x] `P02-10` Add persistence contract tests including restart, partial transaction rollback, duplicate submission, and malformed migration.
-- [ ] `P02-11` Set artifact retention and redaction defaults.
+- [x] `P02-11` Set artifact retention and redaction defaults.
 
-**Progress record (2026-11-06):** [Storage foundation](docs/verification/phase-02/storage-foundation.md) and [transactional submission](docs/verification/phase-02/transactional-submission.md) pass their subtask checks. Full Phase 02 gate remains pending atomic artifacts, complete backup/restore and artifact retention defaults.
+**Implementation record (2026-11-06):** [Phase 02 report](docs/verification/phase-02/REPORT.md). V1 persistence/backup gate PASS; legacy restore requires explicit worktree/process reconciliation. Scheduler and execution lifecycle remain later-phase work.
 
 ### Deliverables
 
@@ -1125,8 +1125,8 @@ Migrated SQLite DB, task store API, event history, artifact store, backup script
 - [x] Submit 15 fixture tasks; kill process; restart; all 15 retain identity, state, and dependencies.
 - [x] Duplicate incoming event does not create duplicate task.
 - [x] A failed transaction leaves no half-created task/outbox row.
-- [ ] Backup restores into a clean temp directory and passes integrity check.
-- [ ] Every state change has an event with actor and reason.
+- [x] Backup restores into a clean temp directory and passes integrity check.
+- [x] Every state change has an event with actor and reason.
 
 **Avoid:** Introducing Postgres or Redis to solve problems SQLite can handle on one machine.
 

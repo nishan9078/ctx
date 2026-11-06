@@ -1,0 +1,15 @@
+$ pnpm build && node scripts/test-tui.mjs
+$ tsc
+"FFI is an experimental feature and might change at any time"
+✔ persistent header, multiline composer, mode switch and activity expansion share state (68.230399ms)
+✔ searchable palette and help overlay manage focus without losing the composer draft (17.857656ms)
+✔ transcript sanitizes control text and both modes resize without losing history (72.144619ms)
+✔ sign-in handoff restores focus when the external command fails (58.321065ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 519.276936
