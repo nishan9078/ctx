@@ -1281,17 +1281,17 @@ Verification engine, evidence model, security scanning baseline, structured repo
 
 ### Engineering tasks
 
-- [ ] `P07-01` Implement error taxonomy classifier using structured errors first, constrained regex/log heuristic second, LLM diagnosis only when necessary.
-- [ ] `P07-02` Add retry policy with per-task attempt budget, per-error caps, exponential backoff and jitter.
-- [ ] `P07-03` Create portable checkpoint writer/reader with hashes and schema version.
-- [ ] `P07-04` Implement safe resume in existing worktree; avoid duplicate implementation from a stale checkpoint.
-- [ ] `P07-05` Add repair loop: failed verification -> concise failure packet -> Codex repair -> rerun required verification.
-- [ ] `P07-06` Detect repeat identical failures and block/escalate with evidence.
-- [ ] `P07-07` Add safe local-test-infrastructure recovery rules (e.g., start disposable PostgreSQL/mock service).
-- [ ] `P07-08` Mark live external checks unverified if only mocks were used.
-- [ ] `P07-09` Handle process crash, network timeout, missing project file, failed install and security rejection separately.
-- [ ] `P07-10` Track time/token/cost budgets and stop when reached.
-- [ ] `P07-11` Add deterministic failure-injection tests for each error class.
+- [x] `P07-01` Implement error taxonomy classifier using structured errors first, constrained regex/log heuristic second, LLM diagnosis only when necessary.
+- [x] `P07-02` Add retry policy with per-task attempt budget, per-error caps, exponential backoff and jitter.
+- [x] `P07-03` Create portable checkpoint writer/reader with hashes and schema version.
+- [x] `P07-04` Implement safe resume in existing worktree; avoid duplicate implementation from a stale checkpoint.
+- [x] `P07-05` Add repair loop: failed verification -> concise failure packet -> Codex repair -> rerun required verification.
+- [x] `P07-06` Detect repeat identical failures and block/escalate with evidence.
+- [x] `P07-07` Add safe local-test-infrastructure recovery rules (e.g., start disposable PostgreSQL/mock service).
+- [x] `P07-08` Mark live external checks unverified if only mocks were used.
+- [x] `P07-09` Handle process crash, network timeout, missing project file, failed install and security rejection separately.
+- [x] `P07-10` Track time/token/cost budgets and stop when reached.
+- [x] `P07-11` Add deterministic failure-injection tests for each error class.
 
 ### Deliverables
 
@@ -1299,13 +1299,15 @@ Recovery policies, checkpoint format, retry scheduler, diagnosis evidence, mock 
 
 ### Exit gate
 
-- [ ] One fixture task intentionally fails tests, receives one safe repair, then passes.
-- [ ] One intentionally unfixable task becomes blocked after configured bounds (no infinite loop).
-- [ ] Missing disposable local service can be provisioned only through approved mechanism.
-- [ ] Checkpoint survives restart and preserves current diff.
-- [ ] No retry can bypass a denied approval.
+- [x] One fixture task intentionally fails tests, receives one safe repair, then passes.
+- [x] One intentionally unfixable task becomes blocked after configured bounds (no infinite loop).
+- [x] Missing disposable local service can be provisioned only through approved mechanism.
+- [x] Checkpoint survives restart and preserves current diff.
+- [x] No retry can bypass a denied approval.
 
 **Avoid:** Treating every exit code as "ask the model again".
+
+**Implementation record (2026-11-07):** [Phase 07 report](docs/verification/phase-07/REPORT.md). Tested Linux opt-in recovery gate PASS: full regression 316 passed/six existing opt-in skips, final focused recovery checks seven passed, bundled acceptance 29 passed. Checkpoint-bound repairs retain worktrees and frozen verification; uncertain effects and unavailable accounting block. Existing approved disposable-service rules are retained; live provider repair remains untested.
 
 ---
 
