@@ -1245,16 +1245,16 @@ Worktree manager, process supervisor, resource monitor, ownership records.
 
 ### Engineering tasks
 
-- [ ] `P06-01` Build verification profile registry and schema, allowing a project to opt into safe known commands.
-- [ ] `P06-02` Execute typecheck, tests, build, lint and scan steps with per-step timeouts.
-- [ ] `P06-03` Capture structured step status, environment metadata, command, and log references.
-- [ ] `P06-04` Make `completed` conditional on all required checks passing or exact recorded owner-approved waivers.
-- [ ] `P06-05` Integrate existing Codex Security module when available; add independent static/secret/dependency-scan fallbacks.
-- [ ] `P06-06` Differentiate `unavailable`, `failed`, `skipped_with_approval`, `mock_verified`, and `passed`.
-- [ ] `P06-07` Add checks for unexpected changed files, suspicious secrets, and omitted tests.
-- [ ] `P06-08` Generate `report.json` + human-friendly `REPORT.md` per finished attempt.
-- [ ] `P06-09` Add test fixtures for passing code, failing build, failing tests, unavailable scanner, and security finding.
-- [ ] `P06-10` Expose verification report via CLI task details.
+- [x] `P06-01` Build verification profile registry and schema, allowing a project to opt into safe known commands.
+- [x] `P06-02` Execute typecheck, tests, build, lint and scan steps with per-step timeouts.
+- [x] `P06-03` Capture structured step status, environment metadata, command, and log references.
+- [x] `P06-04` Make `completed` conditional on all required checks passing or exact recorded owner-approved waivers.
+- [x] `P06-05` Integrate existing Codex Security module when available; add independent static/secret/dependency-scan fallbacks.
+- [x] `P06-06` Differentiate `unavailable`, `failed`, `skipped_with_approval`, `mock_verified`, and `passed`.
+- [x] `P06-07` Add checks for unexpected changed files, suspicious secrets, and omitted tests.
+- [x] `P06-08` Generate `report.json` + human-friendly `REPORT.md` per finished attempt.
+- [x] `P06-09` Add test fixtures for passing code, failing build, failing tests, unavailable scanner, and security finding.
+- [x] `P06-10` Expose verification report via CLI task details.
 
 ### Deliverables
 
@@ -1262,13 +1262,15 @@ Verification engine, evidence model, security scanning baseline, structured repo
 
 ### Exit gate
 
-- [ ] An agent saying "done" with a failing test is marked **not completed**.
-- [ ] A pass requires exactly the configured gates.
-- [ ] Unavailable security scan cannot be silently counted as passed.
-- [ ] Every completed attempt has a reproducible evidence bundle.
-- [ ] Mock-only verification explicitly reports live integration untested.
+- [x] An agent saying "done" with a failing test is marked **not completed**.
+- [x] A pass requires exactly the configured gates.
+- [x] Unavailable security scan cannot be silently counted as passed.
+- [x] Every completed attempt has a reproducible evidence bundle.
+- [x] Mock-only verification explicitly reports live integration untested.
 
 **Milestone M1: reliable Codex delegation is now functionally testable.** Do not start Discord until this vertical slice passes.
+
+**Implementation record (2026-11-07):** [Phase 06 report](docs/verification/phase-06/REPORT.md). Tested Linux contract PASS: 310 passed, six existing opt-in skips; 26 bundled-runtime acceptance checks passed. Controlled Codex harness with real local typecheck/test/build/lint/security-baseline tools, immutable reports and guarded completion. A fresh live complete M1 demonstration and paid Codex Security coverage remain untested; no unattended or release readiness is claimed.
 
 ---
 
