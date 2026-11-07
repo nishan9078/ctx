@@ -1210,16 +1210,16 @@ First real Codex task executed from durable queue, event normalization, error ma
 
 ### Engineering tasks
 
-- [ ] `P05-01` Implement project registration and canonical-path validation.
-- [ ] `P05-02` Create per-task or per-attempt Git branch/worktree with recorded base SHA.
-- [ ] `P05-03` Implement worker supervisor (PID/process group, timeouts, stdout/stderr capture, graceful termination, force-kill fallback).
-- [ ] `P05-04` Track worktree ownership and prevent cleanup of human-created directories.
-- [ ] `P05-05` Refuse execution in a repository with unsafe path/symlink conditions.
-- [ ] `P05-06` Preserve dirty original working tree; never reset owner changes.
-- [ ] `P05-07` Add RAM/CPU/disk/concurrency budgets and health signals where practical.
-- [ ] `P05-08` Implement orphan scanning and safe resource cleanup after crash.
-- [ ] `P05-09` Capture diff/hash and package artifacts before discarding a worktree.
-- [ ] `P05-10` Add tests for Git lock conflicts, cancellation during worktree creation, and cleanup idempotency.
+- [x] `P05-01` Implement project registration and canonical-path validation.
+- [x] `P05-02` Create per-task or per-attempt Git branch/worktree with recorded base SHA.
+- [x] `P05-03` Implement worker supervisor (PID/process group, timeouts, stdout/stderr capture, graceful termination, force-kill fallback).
+- [x] `P05-04` Track worktree ownership and prevent cleanup of human-created directories.
+- [x] `P05-05` Refuse execution in a repository with unsafe path/symlink conditions.
+- [x] `P05-06` Preserve dirty original working tree; never reset owner changes.
+- [x] `P05-07` Add RAM/CPU/disk/concurrency budgets and health signals where practical.
+- [x] `P05-08` Implement orphan scanning and safe resource cleanup after crash.
+- [x] `P05-09` Capture diff/hash and package artifacts before discarding a worktree.
+- [x] `P05-10` Add tests for Git lock conflicts, cancellation during worktree creation, and cleanup idempotency.
 
 ### Deliverables
 
@@ -1227,14 +1227,16 @@ Worktree manager, process supervisor, resource monitor, ownership records.
 
 ### Exit gate
 
-- [ ] Original repository and human edits remain untouched after a task completes.
-- [ ] Two fixture tasks cannot modify the same worktree concurrently.
-- [ ] Force-kill during task execution leaves recoverable artifacts and no uncontrolled process.
-- [ ] Cleanup refuses non-owned directories and unarchived dirty worktrees.
+- [x] Original repository and human edits remain untouched after a task completes.
+- [x] Two fixture tasks cannot modify the same worktree concurrently.
+- [x] Force-kill during task execution leaves recoverable artifacts and no uncontrolled process.
+- [x] Cleanup refuses non-owned directories and unarchived dirty worktrees.
 
 **Avoid:** Trusting `git clean -fdx` or recursive delete on arbitrary paths.
 
 ---
+
+**Implementation record (2026-11-07):** [Phase 05 report](docs/verification/phase-05/REPORT.md). Tested Linux gate PASS: 284 tests passed, six opt-in live skips, 41 bundled-runtime acceptance checks. Sampled budgets/process-group ownership are not cgroup/VM isolation. Required ordinary task verification remains Phase 06.
 
 ## Phase 06 — Verification gates, evidence, and security fallback
 
