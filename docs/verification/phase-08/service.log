@@ -1,0 +1,11 @@
+(node:235306) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+{
+  "serviceRestart": "passed",
+  "persistentPause": "passed",
+  "beforePid": 235319,
+  "afterPid": 235333,
+  "activeInferenceWorkers": 0,
+  "logout": "not performed; no lingering change",
+  "unit": "ctx-acceptance-73151917-e7d9-47a4-8187-f44a265ab071"
+}

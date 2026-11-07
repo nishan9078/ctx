@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { daemonCommand } from './daemon.js';
 import { previewApply, confirmApply } from '../../../packages/core/src/apply.js';
 import { userInfo } from 'node:os';
 import { TaskRepository } from '../../../packages/persistence/src/task-repository.js';
@@ -27,6 +28,7 @@ export async function main(args = process.argv.slice(2)): Promise<number> {
   const [command, argument] = positionals;
   if (values.version) { console.log('ctx 0.1.0'); return 0; }
   if (values.help) {
+    console.log('Daemon: ctx daemon start|stop|status|query --database <sqlite>\n        ctx daemon submit <submission.json> --database <sqlite>\n        ctx daemon pause|resume|cancel|retry <task-id> --revision <n> --database <sqlite>');
     console.log('Verification: ctx profile <profile.json> --project <id> --database <sqlite>\n              ctx details <task-id> --database <sqlite> [--report-format json|markdown]\n              ctx waive <task-id> --step <id> --revision <n> --reason <text> --expires <ISO> --database <sqlite>');
     console.log('Storage: ctx backup <new-directory> --database <sqlite-file>\n         ctx restore <backup-directory> --output <new-directory>');
     console.log('ctx — local engineering workspace\nUsage: ctx [--repo path]              Open the terminal interface (--plain for line mode)\n       ctx doctor                    Check local prerequisites\n       ctx login                     Sign in to the connected provider\n       ctx security --repo path      Run an explicit security review\n\nctx run "request" --repo . [--build "command"] [--test "command"] [--output path] [--model model] [--timeout seconds] [--plan plan.json] [--max-repairs 0] [--execution docker|host|auto] [--allow-host-fallback] [--acceptance criteria.json] [--typecheck command] [--security-check command] [--browser-check command] [--image image] [--services services.json] [--max-recoveries 3] [--allow-image-pull] [--allow-dependency-install]\nctx status [task-id] --repo . [--output path]\nctx resume <task-id> --repo . [--output path]\nctx logs <task-id> --repo . [--output path]\nctx diff <task-id> --repo . [--output path]\nctx apply <task-id> --repo . [--confirm preview-token]'); return 0;
@@ -39,6 +41,10 @@ export async function main(args = process.argv.slice(2)): Promise<number> {
       console.log(JSON.stringify({ directory: result.directory, manifest: join(result.directory, 'snapshot', 'manifest.json'), files: result.manifest.files.length }, null, 2));
     } else console.log(JSON.stringify(await restoreBackup(argument, values.output!), null, 2));
     return 0;
+  }
+  if (command === 'daemon' || command === 'doctor' && values.database) {
+    if (!values.database) throw new Error('Daemon commands require --database');
+    return daemonCommand(command === 'doctor' ? 'status' : argument ?? 'status', values.database, positionals[2], {revision:values.revision,reason:values.reason});
   }
   if (['profile','details','waive'].includes(command ?? '')) {
     if (positionals.length !== 2 || !argument || !values.database) throw new Error('Verification commands require one profile file/task ID and --database');

@@ -1,0 +1,23 @@
+[Unit]
+Description=CTX Sentinel local task daemon
+After=default.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/ctx/daemon.env
+# Install path and DB are explicit owner configuration. Use an absolute Node path.
+ExecStart=/usr/bin/flock --exclusive --nonblock --no-fork ${CTX_DATA}/sentinel/daemon.lock ${CTX_NODE} ${CTX_ROOT}/dist/apps/daemon/src/index.js --locked ${CTX_DATA}/state.sqlite
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=45
+KillMode=control-group
+UMask=0077
+NoNewPrivileges=yes
+MemoryMax=4G
+TasksMax=256
+LimitNOFILE=4096
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
