@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 let started = false;
 process.on('SIGTERM', () => {});
@@ -5,6 +6,9 @@ process.on('message', message => {
   const frame = message as { type?: string };
   if (frame.type !== 'run' || started) return; started = true;
   const mode = process.env.CTX_PROCESS_FIXTURE;
+  if (mode === 'disk') writeFileSync('overflow.bin', Buffer.alloc(2 * 1024 * 1024));
+  if (mode === 'burn') { while (true) { Math.sqrt(Math.random()); } }
+  if (mode === 'output') { console.log('x'.repeat(32768)); console.error('y'.repeat(32768)); }
   if (mode === 'abnormal') { process.kill(process.pid, 'SIGKILL'); return; }
   if (mode === 'descendant' || mode === 'cancel') {
     const child = spawn(process.execPath, ['-e', 'process.on("SIGTERM",()=>{});setInterval(()=>{},1000)'], { stdio: 'ignore' });

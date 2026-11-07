@@ -5,6 +5,7 @@ import { mkdir, rename, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { codexFixture } from '../fixtures/codex.js';
 import { repositoryActor as actor, submissionFixture } from '../fixtures/repository.js';
+import { TaskRepository } from '../../packages/persistence/src/task-repository.js';
 import { ArtifactStore } from '../../packages/persistence/src/artifact-store.js';
 import { openOrchestrationDatabase, currentSchemaVersion } from '../../packages/persistence/src/migrations.js';
 
@@ -76,5 +77,14 @@ test('schema 5 migrates with historical event/session preservation and requires 
       assert.equal((upgraded.db.prepare('SELECT external_session_id FROM ctx_harness_sessions WHERE attempt_id=?').get(previous.attempt.id) as { external_session_id: string }).external_session_id, 'schema5-thread');
       assert.equal((upgraded.db.prepare('SELECT count(*) AS n FROM ctx_worker_events WHERE attempt_id=?').get(previous.attempt.id) as { n: number }).n, 1);
     } finally { upgraded.db.close(); }
+    const reopened = await TaskRepository.open(f.filename);
+    try {
+      reopened.submitTask(submissionFixture('needs-registration'), actor); reopened.queue.refresh(actor);
+      assert.equal(reopened.getTask('needs-registration').state, 'blocked');
+      await reopened.registerProject({ id: 'fixture', repositoryPath: f.project, policyId: 'safe', verificationProfile: 'node-api' }, actor, 'Owner revalidated migrated project identity');
+      assert.ok(reopened.events().some(event => event.type === 'project.identity_bound' && event.actor === actor.actorId));
+      const task = reopened.getTask('needs-registration'); reopened.queue.controlTask(task.spec.id, 'retry', task.revision, actor, 'Owner retried after identity validation'); reopened.queue.refresh(actor);
+      assert.equal(reopened.getTask('needs-registration').state, 'ready');
+    } finally { reopened.close(); }
   } finally { const { rm } = await import('node:fs/promises'); await rm(f.root, { recursive: true, force: true }); }
 });

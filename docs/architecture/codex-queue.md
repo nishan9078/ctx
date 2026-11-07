@@ -53,3 +53,7 @@ HARNESS_CODEX_QUEUE_LIVE=1 node --test --test-reporter=tap dist/tests/integratio
 ```
 
 It uses existing authentication/configuration, one attempt and a two-minute wall budget. Evidence is retained under `.harness/phase04-live/<run>/`. The ordinary suite skips this smoke test. See the Phase 04 report for the demonstrated live result and current limitations.
+
+## Phase 05 lifecycle integration
+
+The queue now uses durable `OwnedWorkspaces`, named private task branches/base SHAs, exclusive workspace access and bounded archive receipts. Explicit resume requires a recorded owned workspace; legacy directories are not automatically adopted. Runtime health/budgets are checked before launch, during the owned SDK process, and after exit. See [worker runtime](worker-runtime.md) and [owned workspaces](owned-workspaces.md). The Phase 04 verification handoff still blocks ordinary tasks pending Phase 06.

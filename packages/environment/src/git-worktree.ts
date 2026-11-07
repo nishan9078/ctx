@@ -1,10 +1,10 @@
 import { join, dirname, relative, isAbsolute, sep } from 'node:path';
 import { realpath } from 'node:fs/promises';
 import { safeDirectory, safeReadText } from './path-safety.js';
-import { runProcess } from './process-manager.js';
+import { privateGit } from './private-git.js';
 // A private snapshot preserves dirty/untracked source files without writing to source Git metadata.
 export async function addWorktree(snapshot: string, destination: string, options: { signal?: AbortSignal; branch?: string } = {}): Promise<void> {
-  const result = await runProcess('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', 'worktree', 'add', ...(options.branch ? ['-b', options.branch] : ['--detach']), destination, 'HEAD'], snapshot, { signal: options.signal });
+  const result = await privateGit(['worktree', 'add', ...(options.branch ? ['-b', options.branch] : ['--detach']), destination, 'HEAD'], snapshot, options.signal);
   if (result.code !== 0) throw new Error(`Git worktree creation failed: ${result.output}`);
 }
 export async function worktreeMetadata(workspace: string): Promise<string | undefined> {

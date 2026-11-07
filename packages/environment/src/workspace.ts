@@ -2,9 +2,10 @@ import { cp, mkdir, readdir, lstat, realpath, access, readFile, appendFile } fro
 import { join, resolve, relative, isAbsolute, sep } from 'node:path';
 import { addWorktree, worktreeMetadata } from './git-worktree.js';
 import { safeDirectory, safeRepository } from './path-safety.js';
-import { runProcess } from './process-manager.js';
+import { privateGit, privateGitScope, assertPrivateGitSafe } from './private-git.js';
 export interface WorkspacePreparation { signal?: AbortSignal; branch?: string; maxBytes?: number; onStage?: (stage: string) => void | Promise<void> }
-export async function prepareWorkspace(repositoryPath: string, destination: string, options: WorkspacePreparation = {}): Promise<string> {
+export function prepareWorkspace(repositoryPath: string, destination: string, options: WorkspacePreparation = {}): Promise<string> { return privateGitScope(() => prepareWorkspaceInScope(repositoryPath, destination, options)); }
+async function prepareWorkspaceInScope(repositoryPath: string, destination: string, options: WorkspacePreparation): Promise<string> {
   const source = await safeRepository(repositoryPath);
   options.signal?.throwIfAborted();
   await safeDirectory(resolve(destination, '..'));
@@ -33,13 +34,13 @@ export async function prepareWorkspace(repositoryPath: string, destination: stri
   }
   await copyDirectory(source, snapshot);
   const git = async (args: string[]) => {
-    const result = await runProcess('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', ...args], snapshot, { signal: options.signal });
+    const result = await privateGit(args, snapshot, options.signal);
     if (result.code !== 0) throw new Error(`Workspace initialization failed: ${result.output}`);
   };
   await options.onStage?.('snapshot-copied'); options.signal?.throwIfAborted();
   await git(['init', '-q']); await options.onStage?.('git-initialized'); options.signal?.throwIfAborted(); await git(['add', '-A']);
   // A tracked file may now match .gitignore; retain that tracked status in the private baseline.
-  const original = await runProcess('git', ['--no-optional-locks', '-c', 'core.fsmonitor=false', 'ls-files', '-z', '--cached'], source, { signal: options.signal });
+  const original = await privateGit(['--no-optional-locks', 'ls-files', '-z', '--cached'], source, options.signal);
   if (original.code === 0) {
     if (original.truncated) throw new Error('Source file list exceeds the safe snapshot limit');
     const tracked: string[] = [];
@@ -57,28 +58,30 @@ export async function prepareWorkspace(repositoryPath: string, destination: stri
   options.signal?.throwIfAborted(); await options.onStage?.('ready');
   return target;
 }
-export async function captureDiff(workspacePath: string, baseSha = 'HEAD'): Promise<string> {
+export function captureDiff(workspacePath: string, baseSha = 'HEAD'): Promise<string> { return privateGitScope(() => captureDiffInScope(workspacePath, baseSha)); }
+async function captureDiffInScope(workspacePath: string, baseSha: string): Promise<string> {
   // Keep generated dependencies/task metadata out of the private Git index.
   // This edits only the task's private Git metadata, never the selected project.
   const common = await worktreeMetadata(workspacePath);
+  await assertPrivateGitSafe(workspacePath);
   const metadata = common ?? join(workspacePath, '.git');
   if (!common) { const info = await lstat(metadata); if (!info.isDirectory() || info.isSymbolicLink()) throw new Error('Unsafe standalone Git metadata'); }
   const exclude = join(metadata, 'info', 'exclude');
   const rules = await readFile(exclude, 'utf8').catch(() => '');
   if (!rules.includes('# CTX generated state')) await appendFile(exclude, '\n# CTX generated state\nnode_modules/\n.harness/\n');
-  const reset = await runProcess('git', ['reset', '-q', 'HEAD'], workspacePath);
+  const reset = await privateGit(['reset', '-q', 'HEAD'], workspacePath);
   if (reset.code !== 0) throw new Error(reset.output);
   // Include new files as well as tracked edits, without modifying the source repo.
-  const stage = await runProcess('git', ['add', '-A'], workspacePath);
+  const stage = await privateGit(['add', '-A'], workspacePath);
   if (stage.code !== 0) throw new Error(stage.output);
-  const diff = await runProcess('git', ['diff', '--cached', '--binary', baseSha], workspacePath);
+  const diff = await privateGit(['diff', '--no-ext-diff', '--no-textconv', '--cached', '--binary', baseSha], workspacePath);
   if (diff.code !== 0) throw new Error(diff.output);
   if (diff.truncated) throw new Error('Diff exceeds the 1,000,000 character evidence limit; inspect the retained workspace.');
   return diff.output;
 }
 
 export async function changedPaths(workspace: string): Promise<{ paths: string[]; deleted: string[] }> {
-  const result = await runProcess('git', ['diff', '--cached', '--name-status', '--no-renames', '-z', 'HEAD'], workspace);
+  const result = await privateGit(['diff', '--no-ext-diff', '--no-textconv', '--cached', '--name-status', '--no-renames', '-z', 'HEAD'], workspace);
   if (result.code !== 0 || result.truncated) throw new Error(`Cannot enumerate changed files: ${result.output}`);
   const parts = result.output.split('\0').filter(Boolean); const paths: string[] = []; const deleted: string[] = [];
   for (let index = 0; index < parts.length; index += 2) { if (!parts[index + 1]) throw new Error('Malformed changed-file list'); paths.push(parts[index + 1]); if (parts[index] === 'D') deleted.push(parts[index + 1]); }

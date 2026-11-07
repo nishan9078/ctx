@@ -63,6 +63,7 @@ export class QueueOperations {
     const updated = this.#c.task(id); this.#c.event('task', id, `task.${to}`, actor, why, { from: task.state, to, revision: updated.revision }, id); this.notify(updated, `${id}: ${to}. ${why}`); return updated;
   }
   assertLease(claim: LeaseClaim): void { this.fence(claim); }
+  assertProjectRegistered(id: string): void { identifier(id, 'project.id'); this.assertProjectIdentity(id); }
   private assertProjectIdentity(id: string): void {
     const project = this.#c.project(id);
     const identity = this.#c.db.prepare('SELECT device,inode FROM ctx_project_identities WHERE project_id=?').get(id) as { device: string; inode: string } | undefined;

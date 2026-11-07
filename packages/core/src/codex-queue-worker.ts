@@ -1,4 +1,4 @@
-import { mkdir, readFile, realpath } from 'node:fs/promises';
+import { readFile, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { CommandActor } from '../../shared/src/domain.js';
 import type { LeaseClaim, QueueWorker, WorkerOutcome } from '../../shared/src/scheduling.js';
@@ -7,17 +7,22 @@ import { probeCodex, type CodexReadiness } from '../../agents/src/codex-probe.js
 import { buildCodexTaskPacket, formatCodexPrompt } from '../../agents/src/codex-task-packet.js';
 import { normalizeCodexEvent, CodexTurnTracker } from '../../agents/src/codex-event-normalizer.js';
 import type { CodexExecutor } from '../../agents/src/codex-execution-port.js';
-import { prepareWorkspace, captureDiff } from '../../environment/src/workspace.js';
+import { captureDiff } from '../../environment/src/workspace.js';
 import { ArtifactStore } from '../../persistence/src/artifact-store.js';
 import { sha256 } from '../../persistence/src/artifact-files.js';
 import type { TaskRepository } from '../../persistence/src/task-repository.js';
 import { SupervisedCodexExecutor } from './supervised-codex-executor.js';
 import { DurableScheduler } from './durable-scheduler.js';
+import { OwnedWorkspaces } from './owned-workspaces.js';
+import type { OwnedWorkspace } from '../../shared/src/workspaces.js';
+import { RuntimeSampler, enforceRuntimeBudget } from '../../environment/src/runtime-health.js';
+import { workerRuntimeBudget, type WorkerRuntimeBudget } from '../../shared/src/runtime.js';
 import { verificationHandoffPipeline } from './result-pipeline.js';
 export interface CodexQueueOptions {
   executor?: CodexExecutor;
   probe?: () => Promise<CodexReadiness>;
   model?: string;
+  runtime?: Partial<WorkerRuntimeBudget>;
   /** Explicit owner-selected prior attempt. Never inferred from a crash. */
   resume?: { taskId: string; attemptId: string };
 }
@@ -29,6 +34,7 @@ export class CodexQueueWorker implements QueueWorker {
     const store = await ArtifactStore.open(this.repository.dataDirectory);
     const artifacts: string[] = []; const evidence: string[] = []; let delivery = 0; let rawCount = 0; let workspace: string | undefined; let workspaceOwnerAttemptId = claim.attempt.id; let effectsPossible = false; let processStarted = false;
     const tracker = new CodexTurnTracker();
+    const manager = new OwnedWorkspaces(this.repository); const budget = workerRuntimeBudget(this.options.runtime); let owned: OwnedWorkspace | undefined;
     const save = async (kind: string, content: string, retention: 'log' | 'evidence' = 'evidence') => {
       const artifact = await store.writeText({ taskId: claim.task.spec.id, attemptId: claim.attempt.id, kind, retention }, content, this.repository, actor);
       artifacts.push(artifact.id); if (!['codex-raw-log', 'codex-command'].includes(kind)) evidence.push(artifact.id); return artifact.id;
@@ -39,13 +45,14 @@ export class CodexQueueWorker implements QueueWorker {
     const fail = (code: string, reason: string, retryable = false) => { emit('failed', { code, message: reason, retryable }); };
     try {
       signal.throwIfAborted();
+      emit('runtime.budget', budget, 'diagnostic');
+      const sampler = new RuntimeSampler(); const preflight = await sampler.sample(this.repository.dataDirectory);
+      emit('runtime.health', preflight, 'diagnostic'); enforceRuntimeBudget(preflight, budget);
       const readiness = await (this.options.probe ?? probeCodex)();
       emit('preflight', readiness, 'diagnostic');
       this.repository.queue.recordHarnessMetadata(claim, { modelId: this.options.model ?? 'unknown' }, actor);
       if (!readiness.cliAvailable || readiness.sdkVersion === 'unknown') { fail('HARNESS_UNAVAILABLE', 'Codex CLI or SDK unavailable'); return { kind: 'blocked', reason: 'Codex CLI or SDK unavailable; inspect preflight diagnostics' }; }
       if (readiness.auth === 'none' || readiness.auth === 'unknown') { fail('AUTH_REQUIRED', 'Codex authentication is unavailable'); return { kind: 'blocked', reason: 'Codex authentication required' }; }
-      const attemptRoot = join(this.repository.dataDirectory, 'codex-work', claim.attempt.id);
-      await mkdir(attemptRoot, { recursive: true, mode: 0o700 });
       let resumeSession: string | undefined;
       if (this.options.resume?.taskId === claim.task.spec.id) {
         const priorId = this.options.resume.attemptId;
@@ -61,15 +68,21 @@ export class CodexQueueWorker implements QueueWorker {
         if (manifest.workspace !== workspace || manifest.specHash !== sha256(JSON.stringify(claim.task.spec)) || await realpath(workspace) !== workspace) throw new CtxError('CONFLICT', 'Resume requires the original unchanged task and retained workspace');
         resumeSession = this.repository.queue.session(priorId)?.externalSessionId ?? undefined;
         if (!resumeSession) throw new CtxError('CONFLICT', 'Resume thread ID is unavailable');
+        owned = await manager.resume(claim, workspaceOwnerAttemptId, actor);
+        if (owned.identity.worktree !== workspace) throw new CtxError('CONFLICT', 'Resume ownership path changed');
         tracker.sessionId = resumeSession;
       } else {
-        workspace = await prepareWorkspace(this.repository.getProject(claim.task.spec.projectId).repositoryPath, join(attemptRoot, 'worktree'));
+        owned = await manager.create(claim, actor, { signal, maxBytes: budget.maxWorkspaceBytes, onStage: async stage => {
+          const health = await sampler.sample(this.repository.dataDirectory, join(this.repository.dataDirectory, 'codex-work', claim.attempt.id));
+          emit('workspace.preparation', { stage, health }, 'diagnostic'); enforceRuntimeBudget(health, budget);
+        } });
+        workspace = owned.identity.worktree;
       }
-      await save('codex-workspace', JSON.stringify({ workspace, workspaceOwnerAttemptId, taskId: claim.task.spec.id, attemptId: claim.attempt.id, specHash: sha256(JSON.stringify(claim.task.spec)), resumedFrom: this.options.resume?.taskId === claim.task.spec.id ? this.options.resume.attemptId : null }));
+      await save('codex-workspace', JSON.stringify({ workspace, workspaceOwnerAttemptId, baseSha: owned.identity.baseSha, branch: owned.identity.branch, taskId: claim.task.spec.id, attemptId: claim.attempt.id, specHash: sha256(JSON.stringify(claim.task.spec)), resumedFrom: this.options.resume?.taskId === claim.task.spec.id ? this.options.resume.attemptId : null }));
       await save('codex-task-packet', JSON.stringify(buildCodexTaskPacket(claim.task.spec)));
       if (resumeSession) this.repository.queue.recordSession(claim, { externalSessionId: resumeSession, version: readiness.sdkVersion });
-      const executor = this.options.executor ?? new SupervisedCodexExecutor();
-      const result = await executor.run({ prompt: formatCodexPrompt(buildCodexTaskPacket(claim.task.spec)), workspacePath: workspace, sessionId: resumeSession, model: this.options.model, signal,
+      const executor = this.options.executor ?? new SupervisedCodexExecutor({ runtime: budget });
+      const result = await executor.run({ prompt: formatCodexPrompt(buildCodexTaskPacket(claim.task.spec)), workspacePath: workspace, resourceRoot: owned.identity.root, runtimeBudget: budget, onHealth: health => emit('runtime.health', health, 'diagnostic'), sessionId: resumeSession, model: this.options.model, signal,
         onProcess: info => {
           processStarted = true;
           this.repository.queue.recordWorkerProcess(claim, info);
@@ -92,7 +105,9 @@ export class CodexQueueWorker implements QueueWorker {
         },
       });
       await save('codex-process-result', JSON.stringify(result), 'log');
-      await save('codex-diff', await captureDiff(workspace));
+      await save('codex-diff', await captureDiff(workspace, owned?.identity.baseSha));
+      try { const archived = await manager.archive(owned.id, actor, claim); if (archived.archiveArtifactId) evidence.push(archived.archiveArtifactId); }
+      catch (error) { if (!(error instanceof CtxError && error.code === 'BUDGET_EXHAUSTED')) throw error; emit('workspace.archive_unavailable', { reason: error.message, retained: true }, 'diagnostic'); }
       await save('codex-result', JSON.stringify({ sessionId: tracker.sessionId, summary: tracker.summary, usage: tracker.usage, terminal: tracker.terminal(), malformed: tracker.malformed, toolErrors: tracker.sawToolError, workspace, model: this.options.model ?? 'unknown', provider: 'unknown' }));
       if (signal.aborted || result.aborted) { emit('interrupted', { reason: 'Worker stopped after cancellation' }); return { kind: 'blocked', reason: 'Worker interrupted' }; }
       if (result.exitCode === 0 && tracker.terminal() === 'completed') {
@@ -107,7 +122,8 @@ export class CodexQueueWorker implements QueueWorker {
     } catch (error) {
       if (error instanceof CtxError && error.code === 'CONFLICT') throw error;
       await save('codex-error', String(error).slice(0, 16000), 'log');
-      if (workspace) await save('codex-diff', await captureDiff(workspace));
+      if (workspace) await save('codex-diff', await captureDiff(workspace, owned?.identity.baseSha));
+      if (owned) { try { await manager.archive(owned.id, actor, claim); } catch (archiveError) { if (!(archiveError instanceof CtxError && archiveError.code === 'BUDGET_EXHAUSTED')) throw archiveError; emit('workspace.archive_unavailable', { retained: true }, 'diagnostic'); } }
       if (signal.aborted) {
         emit('interrupted', { reason: 'Cancelled; executor quiesced' });
         return { kind: 'blocked', reason: 'Codex execution interrupted' };

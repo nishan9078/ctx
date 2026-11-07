@@ -14,6 +14,7 @@ process.stdin.on('end', () => {
   const mode = process.env.CTX_SDK_FIXTURE;
   if (mode === 'auth' || mode === 'rate') { emit({type:'turn.failed',error:{message: mode === 'auth' ? '401 authentication required' : '429 rate limit'}}); return; }
   if (mode === 'hang') {
+    fs.writeFileSync('recovery.txt','recoverable fixture edit\\n');
     process.on('SIGTERM', () => {});
     const child = spawn(process.execPath,['-e','process.on("SIGTERM",()=>{});setInterval(()=>{},1000)'],{stdio:'ignore'});
     emit({type:'item.completed',item:{type:'agent_message',text:JSON.stringify({descendant:child.pid})}});

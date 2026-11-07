@@ -87,16 +87,18 @@ export class TaskRepository {
         const prior = this.#db.prepare('SELECT device,inode FROM ctx_project_identities WHERE project_id=?').get(id) as { device: string; inode: string } | undefined;
         if (prior && (prior.device !== String(identity.dev) || prior.inode !== String(identity.ino))) throw new CtxError('CONFLICT', 'Registered source directory identity changed; explicit recovery is required');
         this.#db.prepare('INSERT INTO ctx_project_identities VALUES(?,?,?) ON CONFLICT(project_id) DO NOTHING').run(id, String(identity.dev), String(identity.ino));
+        return !prior;
       };
       const existing = this.#db.prepare('SELECT * FROM ctx_projects WHERE id=? OR canonical_path=?').all(id, canonical) as unknown as ProjectRow[];
       if (existing.length) {
         const row = existing[0];
         if (existing.length !== 1 || row.id !== id || row.canonical_path !== canonical || row.policy_id !== policyId || row.test_profile !== profile) throw new CtxError('CONFLICT', 'Project registration conflicts with an existing identity, path or policy');
-        rememberIdentity(); return this.project(row);
+        if (rememberIdentity()) this.event('project', id, 'project.identity_bound', actor, why, { device: String(identity.dev), inode: String(identity.ino) });
+        return this.project(row);
       }
       this.#db.prepare('INSERT INTO ctx_projects VALUES(?,?,?,?,?)').run(id, canonical, policyId, profile, new Date().toISOString());
       rememberIdentity();
-      this.event('project', id, 'project.registered', actor, why, { policyId, verificationProfile: profile });
+      this.event('project', id, 'project.registered', actor, why, { policyId, verificationProfile: profile, device: String(identity.dev), inode: String(identity.ino) });
       return this.getProject(id);
     });
   }

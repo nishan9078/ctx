@@ -47,6 +47,13 @@ test('cleanup refuses unarchived dirty work and human-owned or substituted direc
     await assert.rejects(f.manager.cleanup(workspace.id, actor, { retentionMs: 0 }), /Unarchived/);
     assert.equal(f.repository.workspaces.get(workspace.id).state, 'archived');
     await f.manager.archive(workspace.id, actor); // Explicitly archive the newly observed content before cleanup.
+    await writeFile(join(workspace.identity.snapshot, 'human-baseline-note'), 'preserve snapshot edit');
+    await assert.rejects(f.manager.cleanup(workspace.id, actor, { retentionMs: 0 }), /snapshot changes/);
+    assert.equal(await readFile(join(workspace.identity.snapshot, 'human-baseline-note'), 'utf8'), 'preserve snapshot edit');
+    await f.manager.archive(workspace.id, actor);
+    await runProcess('git', ['branch', 'human-reference'], workspace.identity.snapshot);
+    await assert.rejects(f.manager.cleanup(workspace.id, actor, { retentionMs: 0 }), /Git references/);
+    await f.manager.archive(workspace.id, actor);
     await writeFile(join(workspace.identity.root, 'human-created'), 'preserve');
     await assert.rejects(f.manager.cleanup(workspace.id, actor, { retentionMs: 0 }), /unowned/);
     await assert.rejects(f.manager.cleanup('not-owned', actor, { retentionMs: 0 }), /missing/);
@@ -79,5 +86,32 @@ test('cleanup can resume after interruption between worktree and private snapsho
     assert.equal(f.repository.workspaces.get(workspace.id).state, 'cleanup'); await f.manager.cleanup(workspace.id, actor, { retentionMs: 0 });
     assert.equal(f.repository.workspaces.get(workspace.id).state, 'removed');
     await mkdir(join(f.repository.dataDirectory, 'codex-work', 'human')); assert.ok((await f.manager.scan()).some(item => item.id === 'human' && item.status === 'unowned-refused'));
+  } finally { await f.cleanup(); }
+});
+
+test('unsafe Git filters and Git-dir environment overrides cannot run during evidence capture', async () => {
+  const f = await fixture();
+  try {
+    const workspace = await f.manager.create(f.claim, actor);
+    const marker = join(f.root, 'must-not-exist');
+    await runProcess('git', ['config', 'filter.bad.clean', `touch ${marker}`], workspace.identity.worktree);
+    await writeFile(join(workspace.identity.worktree, '.gitattributes'), '* filter=bad\n');
+    await assert.rejects(f.manager.archive(workspace.id, actor, f.claim), /unsafe overrides/);
+    await assert.rejects(lstat(marker), { code: 'ENOENT' });
+    const { privateGit } = await import('../../packages/environment/src/private-git.js');
+    const previous = process.env.GIT_WORK_TREE; const previousDir = process.env.GIT_DIR;
+    try { process.env.GIT_WORK_TREE = f.project; process.env.GIT_DIR = join(f.project, '.git');
+      const actual = await privateGit(['rev-parse', '--show-toplevel'], workspace.identity.worktree); assert.equal(actual.output.trim(), workspace.identity.worktree);
+    } finally { if (previous === undefined) delete process.env.GIT_WORK_TREE; else process.env.GIT_WORK_TREE = previous; if (previousDir === undefined) delete process.env.GIT_DIR; else process.env.GIT_DIR = previousDir; }
+  } finally { await f.cleanup(); }
+});
+
+test('valid dotted task identifiers produce safe task branch names', async () => {
+  const f = await codexFixture(); const { submissionFixture } = await import('../fixtures/repository.js');
+  try {
+    const input = submissionFixture('task..lock'); input.spec.priority = 'urgent'; f.repository.submitTask(input, actor); f.repository.queue.refresh(actor);
+    const claim = f.repository.queue.claim({ ownerId: 'dotted', workerKind: 'codex', leaseMs: 10000 }, actor)!; assert.equal(claim.task.spec.id, 'task..lock'); f.repository.queue.start(claim, actor);
+    const workspace = await new OwnedWorkspaces(f.repository).create(claim, actor); assert.equal(workspace.identity.branch, `ctx/task__lock/${claim.attempt.id}`);
+    f.repository.queue.settle(claim, { kind: 'blocked', reason: 'Fixture quiesced' }, actor);
   } finally { await f.cleanup(); }
 });

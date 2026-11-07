@@ -5,7 +5,7 @@ export interface ProjectConfig {
 }
 export interface CtxConfig {
   schemaVersion: 1;
-  runtime: { mode: 'local'; maxWorkers: number; maxWorkersPerProject: number; idleWorkerShutdownSeconds: number; diskFreeMinGb: number; maxAttemptWallMinutes: number; shutdownGraceSeconds: number };
+  runtime: { mode: 'local'; maxWorkers: number; maxWorkersPerProject: number; idleWorkerShutdownSeconds: number; diskFreeMinGb: number; maxAttemptWallMinutes: number; shutdownGraceSeconds: number; maxWorkerRssMb: number; maxWorkerCpuSeconds: number; maxWorkspaceMb: number; worktreeRetentionDays: number };
   capacity: { probePaidEndpoints: boolean; unknownLimitBackoffSeconds: number[] };
   notifications: { discord: boolean; eventTypes: Notification['kind'][] };
   security: { defaultNetwork: 'restricted'; requireApproval: ApprovalAction[]; allowRepositories: string[] };

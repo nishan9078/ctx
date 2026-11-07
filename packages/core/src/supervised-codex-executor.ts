@@ -1,32 +1,26 @@
 import { fork } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { readdirSync, readFileSync } from 'node:fs';
 import { hostname } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { CodexExecutor, CodexRunInput, CodexRunResult } from '../../agents/src/codex-execution-port.js';
 import { processIdentity } from '../../persistence/src/process-identity.js';
+import { RuntimeSampler, enforceRuntimeBudget } from '../../environment/src/runtime-health.js';
+import { liveProcessGroup } from '../../environment/src/process-group.js';
+export { liveProcessGroup } from '../../environment/src/process-group.js';
+import { workerRuntimeBudget, type WorkerRuntimeBudget } from '../../shared/src/runtime.js';
 import { CtxError } from '../../shared/src/errors.js';
 
-/** Enumerate live members, including descendants whose group leader already exited. */
-export function liveProcessGroup(pgid: number): number[] {
-  const members: number[] = [];
-  for (const name of readdirSync('/proc')) {
-    if (!/^\d+$/.test(name)) continue;
-    try {
-      const stat = readFileSync(`/proc/${name}/stat`, 'utf8'); const fields = stat.slice(stat.lastIndexOf(')') + 2).split(/\s+/);
-      if (Number(fields[2]) === pgid && fields[0] !== 'Z' && fields[0] !== 'X') members.push(Number(name));
-    } catch (error) { if (!['ENOENT', 'ESRCH'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error; }
-  }
-  return members;
-}
 export class SupervisedCodexExecutor implements CodexExecutor {
-  constructor(private readonly options: { entry?: string; codexPathOverride?: string; graceMs?: number; env?: NodeJS.ProcessEnv } = {}) {}
+  constructor(private readonly options: { entry?: string; codexPathOverride?: string; graceMs?: number; runtime?: Partial<WorkerRuntimeBudget>; env?: NodeJS.ProcessEnv } = {}) {}
   async run(input: CodexRunInput): Promise<CodexRunResult> {
     if (input.signal.aborted) return { exitCode: null, exitSignal: null, stderrTail: '', stderrTruncated: false, aborted: true, spawned: false };
     if (process.platform !== 'linux') throw new CtxError('ENVIRONMENT_UNAVAILABLE', 'Codex process containment is currently verified on Linux only');
+    const budget = workerRuntimeBudget(input.runtimeBudget ?? this.options.runtime);
+    const sampler = new RuntimeSampler();
     const env = { ...(this.options.env ?? process.env) }; delete env.NODE_TEST_CONTEXT;
-    const child = fork(this.options.entry ?? fileURLToPath(new URL('./codex-worker-entry.js', import.meta.url)), [], { cwd: input.workspacePath, env, execArgv: [], detached: true, stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
+    const child = fork(this.options.entry ?? fileURLToPath(new URL('./codex-worker-entry.js', import.meta.url)), [], { cwd: input.workspacePath, env, execArgv: [], detached: true, stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
     const pgid = child.pid;
+    let stdoutTail = ''; let stdoutTruncated = false;
     let stderrTail = ''; let stderrTruncated = false; let failure: unknown; let chain = Promise.resolve(); let killTimer: NodeJS.Timeout | undefined;
     let stopping = false; let resultSeen = false;
     const closed = new Promise<{ code: number | null; signal: string | null }>(resolve => {
@@ -39,6 +33,7 @@ export class SupervisedCodexExecutor implements CodexExecutor {
       if (child.connected) child.send({ type: 'abort' }, () => {});
       killTimer = setTimeout(() => kill('SIGTERM'), this.options.graceMs ?? 1000);
     };
+    child.stdout?.on('data', (bytes: Buffer) => { stdoutTruncated ||= stdoutTail.length + bytes.length > 16384; stdoutTail = (stdoutTail + bytes.toString()).slice(-16384); });
     child.stderr?.on('data', (bytes: Buffer) => { stderrTruncated ||= stderrTail.length + bytes.length > 16384; stderrTail = (stderrTail + bytes.toString()).slice(-16384); });
     child.on('message', (message: unknown) => {
       chain = chain.then(async () => {
@@ -58,15 +53,25 @@ export class SupervisedCodexExecutor implements CodexExecutor {
     const startup = setTimeout(() => { failure ??= new Error('Codex worker startup timed out'); stop(); }, 10000);
     // Keep termination escalation alive even if the group leader exits first.
     const escalation = setInterval(() => { if (stopping) kill('SIGKILL'); }, (this.options.graceMs ?? 1000) + 1000);
+    let healthTask: Promise<void> | undefined;
+    const check = () => {
+      if (!healthTask) healthTask = (async () => { const health = await sampler.sample(input.workspacePath, input.resourceRoot, pgid); await input.onHealth?.(health); enforceRuntimeBudget(health, budget); })().finally(() => { healthTask = undefined; });
+      return healthTask;
+    };
+    const healthTimer = setInterval(() => {
+      if (!stopping) void check().catch(error => { failure ??= error; stop(); });
+    }, budget.sampleMs);
+    const wallTimer = setTimeout(() => { failure ??= new CtxError('TIMEOUT', 'Worker runtime wall-time budget exceeded'); stop(); }, budget.maxWallMs);
     try {
       if (!pgid) { await closed; throw failure ?? new CtxError('HARNESS_UNAVAILABLE', 'Unable to spawn Codex worker'); }
       const identity = processIdentity(pgid);
       if (identity === 'unknown') throw new CtxError('ENVIRONMENT_UNAVAILABLE', 'Cannot establish Codex process identity');
       await input.onProcess?.({ pid: pgid, pgid, host: hostname(), identity, startedAt: new Date().toISOString() });
+      await check();
       clearTimeout(startup);
       if (input.signal.aborted) stop();
       else child.send({ type: 'run', prompt: input.prompt, workspacePath: input.workspacePath, sessionId: input.sessionId, model: input.model, codexPathOverride: this.options.codexPathOverride }, error => { if (error) { failure ??= error; stop(); } });
-      const exit = await closed; await chain;
+      const exit = await closed; clearInterval(healthTimer); await healthTask; await chain;
       // A normally exited leader can still leave command descendants. They are ours to reap too.
       if (liveProcessGroup(pgid).length) {
         kill('SIGTERM');
@@ -76,13 +81,14 @@ export class SupervisedCodexExecutor implements CodexExecutor {
         while (liveProcessGroup(pgid).length) await delay(20);
       }
       if (failure) throw failure;
-      return { exitCode: exit.code, exitSignal: exit.signal, stderrTail, stderrTruncated, aborted: input.signal.aborted, spawned: true };
+      await check();
+      return { stdoutTail, stdoutTruncated, exitCode: exit.code, exitSignal: exit.signal, stderrTail, stderrTruncated, aborted: input.signal.aborted, spawned: true };
     } catch (error) {
-      stop(); kill('SIGKILL'); await closed;
+      stop(); kill('SIGKILL'); await closed; clearInterval(healthTimer); await healthTask?.catch(() => {});
       if (pgid) while (liveProcessGroup(pgid).length) { kill('SIGKILL'); await delay(20); }
       throw error;
     } finally {
-      clearTimeout(startup); clearInterval(escalation); if (killTimer) clearTimeout(killTimer);
+      clearInterval(healthTimer); clearTimeout(wallTimer); clearTimeout(startup); clearInterval(escalation); if (killTimer) clearTimeout(killTimer);
       input.signal.removeEventListener('abort', stop);
     }
   }

@@ -7,12 +7,16 @@
  * codex-worker-entry.ts); tests inject a fake executor producing
  * deterministic SDK-event streams without credentials.
  */
+import type { RuntimeHealth, WorkerRuntimeBudget } from '../../shared/src/runtime.js';
 export interface CodexProcessInfo {
   pid: number; pgid: number; host: string; identity: string; startedAt: string;
 }
 export interface CodexRunInput {
   prompt: string;
   workspacePath: string;
+  resourceRoot?: string;
+  runtimeBudget?: WorkerRuntimeBudget;
+  onHealth?: (health: RuntimeHealth) => Promise<void> | void;
   /** Explicitly authorized thread/session to resume; omitted for a fresh run. */
   sessionId?: string;
   model?: string;
@@ -30,6 +34,8 @@ export interface CodexRunResult {
   /** Process exit code; null when killed by a signal or still unreaped. */
   exitCode: number | null;
   exitSignal: string | null;
+  stdoutTail?: string;
+  stdoutTruncated?: boolean;
   stderrTail: string;
   stderrTruncated: boolean;
   aborted: boolean;
