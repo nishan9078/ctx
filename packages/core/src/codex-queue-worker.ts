@@ -7,6 +7,8 @@ import { probeCodex, type CodexReadiness } from '../../agents/src/codex-probe.js
 import { buildCodexTaskPacket, formatCodexPrompt } from '../../agents/src/codex-task-packet.js';
 import { normalizeCodexEvent, CodexTurnTracker } from '../../agents/src/codex-event-normalizer.js';
 import type { CodexExecutor } from '../../agents/src/codex-execution-port.js';
+import { workspaceTree } from '../../environment/src/workspace-tree.js';
+import { privateGit } from '../../environment/src/private-git.js';
 import { captureDiff } from '../../environment/src/workspace.js';
 import { ArtifactStore } from '../../persistence/src/artifact-store.js';
 import { sha256 } from '../../persistence/src/artifact-files.js';
@@ -17,12 +19,14 @@ import { OwnedWorkspaces } from './owned-workspaces.js';
 import type { OwnedWorkspace } from '../../shared/src/workspaces.js';
 import { RuntimeSampler, enforceRuntimeBudget } from '../../environment/src/runtime-health.js';
 import { workerRuntimeBudget, type WorkerRuntimeBudget } from '../../shared/src/runtime.js';
-import { verificationHandoffPipeline } from './result-pipeline.js';
+import { verifyEngineeringAttempt, reconcileVerificationReports, type VerificationOptions } from './engineering-verification.js';
+import { engineeringResultPipeline } from './result-pipeline.js';
 export interface CodexQueueOptions {
   executor?: CodexExecutor;
   probe?: () => Promise<CodexReadiness>;
   model?: string;
   runtime?: Partial<WorkerRuntimeBudget>;
+  verification?: VerificationOptions;
   /** Explicit owner-selected prior attempt. Never inferred from a crash. */
   resume?: { taskId: string; attemptId: string };
 }
@@ -45,6 +49,7 @@ export class CodexQueueWorker implements QueueWorker {
     const fail = (code: string, reason: string, retryable = false) => { emit('failed', { code, message: reason, retryable }); };
     try {
       signal.throwIfAborted();
+      const frozen = this.repository.verification.bind(claim, actor);
       emit('runtime.budget', budget, 'diagnostic');
       const sampler = new RuntimeSampler(); const preflight = await sampler.sample(this.repository.dataDirectory);
       emit('runtime.health', preflight, 'diagnostic'); enforceRuntimeBudget(preflight, budget);
@@ -81,6 +86,12 @@ export class CodexQueueWorker implements QueueWorker {
       await save('codex-workspace', JSON.stringify({ workspace, workspaceOwnerAttemptId, baseSha: owned.identity.baseSha, branch: owned.identity.branch, taskId: claim.task.spec.id, attemptId: claim.attempt.id, specHash: sha256(JSON.stringify(claim.task.spec)), resumedFrom: this.options.resume?.taskId === claim.task.spec.id ? this.options.resume.attemptId : null }));
       await save('codex-task-packet', JSON.stringify(buildCodexTaskPacket(claim.task.spec)));
       if (resumeSession) this.repository.queue.recordSession(claim, { externalSessionId: resumeSession, version: readiness.sdkVersion });
+      if (frozen.profile) {
+        const unchanged = await privateGit(['diff', '--no-ext-diff', '--no-textconv', '--exit-code', owned.identity.baseSha!, '--'], owned.identity.snapshot, signal);
+        if (unchanged.code !== 0) throw new CtxError('CONFLICT', 'Verification baseline changed before harness execution');
+        const baseline = await workspaceTree(owned.identity.snapshot);
+        const descriptor = await store.writeBinary({ taskId: claim.task.spec.id, attemptId: claim.attempt.id, kind: 'verification-baseline' }, Buffer.from(JSON.stringify({ schemaVersion: 1, workspaceId: owned.id, baseSha: owned.identity.baseSha, profileHash: frozen.profileHash, taskSpecHash: frozen.taskSpecHash, entries: baseline.entries })), this.repository, actor); evidence.push(descriptor.id);
+      }
       const executor = this.options.executor ?? new SupervisedCodexExecutor({ runtime: budget });
       const result = await executor.run({ prompt: formatCodexPrompt(buildCodexTaskPacket(claim.task.spec)), workspacePath: workspace, resourceRoot: owned.identity.root, runtimeBudget: budget, onHealth: health => emit('runtime.health', health, 'diagnostic'), sessionId: resumeSession, model: this.options.model, signal,
         onProcess: info => {
@@ -111,6 +122,7 @@ export class CodexQueueWorker implements QueueWorker {
       await save('codex-result', JSON.stringify({ sessionId: tracker.sessionId, summary: tracker.summary, usage: tracker.usage, terminal: tracker.terminal(), malformed: tracker.malformed, toolErrors: tracker.sawToolError, workspace, model: this.options.model ?? 'unknown', provider: 'unknown' }));
       if (signal.aborted || result.aborted) { emit('interrupted', { reason: 'Worker stopped after cancellation' }); return { kind: 'blocked', reason: 'Worker interrupted' }; }
       if (result.exitCode === 0 && tracker.terminal() === 'completed') {
+        await save('harness-result', JSON.stringify({ schemaVersion: 1, taskId: claim.task.spec.id, attemptId: claim.attempt.id, taskSpecHash: sha256(JSON.stringify(claim.task.spec)), harnessId: this.kind, outcome: 'completed', exitCode: result.exitCode, sessionId: tracker.sessionId }));
         emit('completed', { summary: tracker.summary || 'Codex turn completed', artifactIds: evidence });
         return { kind: 'success', artifactIds: evidence };
       }
@@ -136,5 +148,11 @@ export class CodexQueueWorker implements QueueWorker {
   }
 }
 export function createCodexQueueScheduler(repository: TaskRepository, options: CodexQueueOptions & { leaseMs?: number } = {}): DurableScheduler {
-  return new DurableScheduler(repository, new CodexQueueWorker(repository, options), { leaseMs: options.leaseMs, finalizer: verificationHandoffPipeline(repository) });
+  return new DurableScheduler(repository, new CodexQueueWorker(repository, options), { leaseMs: options.leaseMs, finalizer: engineeringResultPipeline(repository, { runtime: options.runtime, ...options.verification }),
+    async onReconcile(actor) { await reconcileVerificationReports(repository, actor); },
+    async onWorkerSettled(claim, outcome, actor, signal) {
+      if (repository.verification.reports(claim.task.spec.id).some(report => report.attemptId === claim.attempt.id && report.reportArtifactId)) return;
+      await verifyEngineeringAttempt(repository, claim, actor, signal, { runtime: options.runtime, ...options.verification }, { harnessOutcome: signal.aborted ? 'interrupted' : 'failed', reason: outcome.kind === 'success' ? 'Worker interrupted before verification' : outcome.reason });
+    },
+  });
 }

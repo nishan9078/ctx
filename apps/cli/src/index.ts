@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 import { previewApply, confirmApply } from '../../../packages/core/src/apply.js';
+import { userInfo } from 'node:os';
+import { TaskRepository } from '../../../packages/persistence/src/task-repository.js';
+import { verificationTaskDetails } from '../../../packages/core/src/verification-details.js';
 import { parseArgs } from 'node:util';
 import { readFile, access } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
@@ -19,11 +22,12 @@ export async function main(args = process.argv.slice(2)): Promise<number> {
     repo: { type: 'string', default: '.' }, acceptance: { type: 'string' }, typecheck: { type: 'string' }, 'security-check': { type: 'string' }, 'browser-check': { type: 'string' }, confirm: { type: 'string' }, 'allow-host-fallback': { type: 'boolean' }, output: { type: 'string' }, build: { type: 'string' }, test: { type: 'string' },
     execution: { type: 'string' }, image: { type: 'string' }, services: { type: 'string' }, 'max-recoveries': { type: 'string' }, 'allow-image-pull': { type: 'boolean' }, 'allow-dependency-install': { type: 'boolean' },
     model: { type: 'string' }, timeout: { type: 'string' }, plan: { type: 'string' }, 'max-repairs': { type: 'string' },
-    database: { type: 'string' }, plain: { type: 'boolean' }, version: { type: 'boolean', short: 'v' }, help: { type: 'boolean', short: 'h' },
+    database: { type: 'string' }, project: { type: 'string' }, step: { type: 'string' }, reason: { type: 'string' }, expires: { type: 'string' }, revision: { type: 'string' }, 'report-format': { type: 'string' }, plain: { type: 'boolean' }, version: { type: 'boolean', short: 'v' }, help: { type: 'boolean', short: 'h' },
   } });
   const [command, argument] = positionals;
   if (values.version) { console.log('ctx 0.1.0'); return 0; }
   if (values.help) {
+    console.log('Verification: ctx profile <profile.json> --project <id> --database <sqlite>\n              ctx details <task-id> --database <sqlite> [--report-format json|markdown]\n              ctx waive <task-id> --step <id> --revision <n> --reason <text> --expires <ISO> --database <sqlite>');
     console.log('Storage: ctx backup <new-directory> --database <sqlite-file>\n         ctx restore <backup-directory> --output <new-directory>');
     console.log('ctx — local engineering workspace\nUsage: ctx [--repo path]              Open the terminal interface (--plain for line mode)\n       ctx doctor                    Check local prerequisites\n       ctx login                     Sign in to the connected provider\n       ctx security --repo path      Run an explicit security review\n\nctx run "request" --repo . [--build "command"] [--test "command"] [--output path] [--model model] [--timeout seconds] [--plan plan.json] [--max-repairs 0] [--execution docker|host|auto] [--allow-host-fallback] [--acceptance criteria.json] [--typecheck command] [--security-check command] [--browser-check command] [--image image] [--services services.json] [--max-recoveries 3] [--allow-image-pull] [--allow-dependency-install]\nctx status [task-id] --repo . [--output path]\nctx resume <task-id> --repo . [--output path]\nctx logs <task-id> --repo . [--output path]\nctx diff <task-id> --repo . [--output path]\nctx apply <task-id> --repo . [--confirm preview-token]'); return 0;
   }
@@ -36,7 +40,30 @@ export async function main(args = process.argv.slice(2)): Promise<number> {
     } else console.log(JSON.stringify(await restoreBackup(argument, values.output!), null, 2));
     return 0;
   }
-  if (values.database !== undefined) throw new Error('--database is only supported by ctx backup');
+  if (['profile','details','waive'].includes(command ?? '')) {
+    if (positionals.length !== 2 || !argument || !values.database) throw new Error('Verification commands require one profile file/task ID and --database');
+    await access(resolve(values.database)); const repository = await TaskRepository.open(values.database);
+    const actor = { actorId: `local:${process.getuid?.() ?? userInfo().username}`, source: 'cli' as const, requestId: randomUUID() };
+    try {
+      if (command === 'profile') {
+        if (!values.project) throw new Error('Profile registration requires --project');
+        console.log(JSON.stringify(repository.verification.register(values.project, JSON.parse(await readFile(argument, 'utf8')), actor, 'Local owner explicitly registered exact verification gates'), null, 2));
+      } else if (command === 'waive') {
+        if (!values.step || !values.revision || !values.reason || !values.expires) throw new Error('Waiver requires --step, --revision, --reason and --expires; it applies only to the next attempt');
+        console.log(JSON.stringify(repository.verification.grantWaiver(argument, Number(values.revision), values.step, values.reason, values.expires, actor), null, 2));
+      } else {
+        if (values['report-format'] && !['json','markdown'].includes(values['report-format'])) throw new Error('Report format must be json or markdown');
+        const details = await verificationTaskDetails(repository, argument);
+        if (values['report-format'] === 'markdown') {
+          if (!details.markdownArtifactId) throw new Error('No engineering verification report is available');
+          const descriptor = await repository.verifyStoredArtifact(details.markdownArtifactId);
+          console.log(`Task: ${argument}\nState: ${details.task.state}\n\n${await readFile(join(repository.dataDirectory, descriptor.location), 'utf8')}`);
+        } else console.log(JSON.stringify(details, null, 2));
+      }
+      return 0;
+    } finally { repository.close(); }
+  }
+  if (values.database !== undefined) throw new Error('--database is supported by backup and documented verification commands');
   if (!command || command === 'ui') {
     if (command === 'ui' && positionals.length > 1) throw new Error('Use ctx ui --repo path');
     if (values.execution && !['docker', 'host', 'auto'].includes(values.execution)) throw new Error('Execution must be docker, host or auto');

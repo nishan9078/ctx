@@ -74,6 +74,7 @@ export class OwnedWorkspaces {
     this.repository.workspaces.assertQuiescent(id);
     const workspace = this.repository.workspaces.get(id);
     for (const attempt of this.repository.queue.attempts(workspace.taskId)) {
+      this.repository.verification.assertProcessesStopped(attempt.id);
       const worker = this.repository.queue.workerProcess(attempt.id);
       if (worker && workerGroupState(worker) !== 'dead') throw new CtxError('CONFLICT', 'Workspace still has a live or unobservable worker');
     }

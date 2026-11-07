@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-export interface ProcessResult { code: number | null; output: string; timedOut: boolean; truncated: boolean }
+export interface ProcessResult { stdout?: string; stderr?: string; stdoutTruncated?: boolean; stderrTruncated?: boolean; code: number | null; output: string; timedOut: boolean; truncated: boolean }
 export async function runProcess(command: string, args: string[], cwd: string, options: {
   signal?: AbortSignal; timeoutMs?: number; onOutput?: (text: string) => void; env?: NodeJS.ProcessEnv;
 } = {}): Promise<ProcessResult> {

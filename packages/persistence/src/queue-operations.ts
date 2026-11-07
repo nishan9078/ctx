@@ -1,3 +1,4 @@
+import type { GateReport } from '../../shared/src/verification-profile.js';
 import type { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
@@ -21,6 +22,8 @@ export interface QueueContext {
   event(entity: string, id: string, type: string, actor: CommandActor, reason: string, payload: unknown, taskId?: string): void;
   verifyArtifact(id: string): Promise<ArtifactManifest>;
   redactText(value: string): string;
+  auditVerification(claim: LeaseClaim, id: string): Promise<GateReport>;
+  consumeVerification(claim: LeaseClaim, id: string, actor: CommandActor): GateReport;
 }
 interface LeaseRow { task_id: string; attempt_id: string; owner_id: string; fencing_token: number; expires_at: string; owner_pid: number; owner_host: string; owner_start: string }
 export interface StoredWorkerEvent { attemptId: string; sequence: number; kind: 'canonical' | 'diagnostic'; type: string; payload: unknown; deliveryId: string; createdAt: string }
@@ -201,6 +204,20 @@ export class QueueOperations {
       this.end(claim, 'completed'); this.move(id, 'completed', actor, 'Fixture-only task: independent output/profile checks and immutable evidence passed');
     });
   }
+  async finalizeVerification(claim: LeaseClaim, runId: string, context: CommandActor): Promise<void> {
+    const actor = this.#c.actor(context); const audited = await this.#c.auditVerification(claim, runId);
+    this.#c.write(() => {
+      this.fence(claim); const task = this.#c.task(claim.task.spec.id);
+      if (task.state !== 'verifying' || claim.attempt.harnessId === 'fixture') throw new CtxError('CONFLICT', 'Ordinary verification completion requires an active real attempt in verifying state');
+      if (this.control(task.spec.id) === 'cancel') { this.end(claim, 'cancelled'); this.move(task.spec.id, 'cancelled', actor, 'Cancellation won before verification finalization'); return; }
+      const report = this.#c.consumeVerification(claim, runId, actor);
+      if (report.status !== audited.status) throw new CtxError('CONFLICT', 'Verification decision changed before finalization');
+      const passed = ['passed','passed_with_waivers'].includes(report.status);
+      this.end(claim, passed || report.status === 'unavailable' || report.status === 'mock_verified' ? 'completed' : report.status === 'failed' ? 'failed' : 'interrupted');
+      this.move(task.spec.id, passed ? 'completed' : report.status === 'failed' ? 'failed' : 'blocked', actor,
+        passed ? `Configured independent verification passed${report.status === 'passed_with_waivers' ? ' with exact recorded owner waivers' : ''}; report ${runId}` : `Verification ${report.status}; required coverage is not satisfied; report ${runId}`);
+    });
+  }
   controlTask(id: string, operation: 'pause' | 'cancel' | 'resume' | 'retry', expectedRevision: number, context: CommandActor, reason: string): TaskSnapshot {
     if (!['pause', 'cancel', 'resume', 'retry'].includes(operation)) throw new CtxError('INVALID_INPUT', 'Unknown queue control operation');
     identifier(id, 'taskId'); integer(expectedRevision, 1, Number.MAX_SAFE_INTEGER, 'expectedRevision'); const actor = this.#c.actor(context); const why = this.#c.safeText(reason, 'reason');
@@ -233,6 +250,9 @@ export class QueueOperations {
         const state = ownerState(lease.owner_pid, lease.owner_host, lease.owner_start); if (state !== 'dead') { counts[state]++; continue; }
         const worker = this.workerProcess(lease.attempt_id);
         if (worker) { const workerState = workerGroupState(worker); if (workerState !== 'dead') { counts[workerState]++; continue; } }
+        const verificationProcesses = this.#c.db.prepare('SELECT pid,pgid,host,identity FROM ctx_verification_processes WHERE attempt_id=?').all(lease.attempt_id) as { pid: number; pgid: number; host: string; identity: string }[];
+        const pendingVerification = verificationProcesses.map(workerGroupState).find(state => state !== 'dead');
+        if (pendingVerification) { counts[pendingVerification]++; continue; }
         const attempt = this.#c.db.prepare('SELECT harness_id FROM ctx_attempts WHERE id=?').get(lease.attempt_id) as { harness_id: string }; const intent = this.control(lease.task_id);
         this.#c.db.prepare('DELETE FROM ctx_workspace_access WHERE attempt_id=?').run(lease.attempt_id);
         this.#c.db.prepare("UPDATE ctx_attempts SET state='interrupted',ended_at=? WHERE id=?").run(now(), lease.attempt_id); this.#c.db.prepare('DELETE FROM ctx_leases WHERE task_id=? AND fencing_token=?').run(lease.task_id, lease.fencing_token); this.#c.db.prepare('UPDATE ctx_tasks SET control_intent=NULL WHERE id=?').run(lease.task_id);

@@ -36,6 +36,8 @@ export interface GateReport {
   profileId: string; profileHash?: string; workspaceId?: string; workspaceHash?: string; baseSha?: string; resultSha?: string;
   status: 'passed' | 'passed_with_waivers' | 'failed' | 'unavailable' | 'cancelled' | 'mock_verified';
   steps: GateStepResult[]; artifactIds: string[]; limitations: string[]; startedAt: string; endedAt: string;
+  reconciled?: boolean;
+  harnessArtifactId?: string;
   harnessOutcome: 'completed' | 'failed' | 'interrupted';
 }
 export const verificationHash = (value: unknown): string => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -53,7 +55,7 @@ export function validateVerificationProfile(input: unknown): VerificationProfile
     const result: GateStep = { id, kind, required: flag(step.required, 'step.required', true), waivable: flag(step.waivable, 'step.waivable'), timeoutMs: integer(step.timeoutMs ?? 180000, 100, 600000, 'step.timeoutMs'), integration: step.integration === undefined ? 'live' : step.integration as 'live' | 'mock' };
     if (!['live','mock'].includes(result.integration)) throw new ValidationError('step.integration', 'expected live or mock');
     if (['scope','test_integrity'].includes(kind) && result.waivable) throw new ValidationError('step.waivable', 'scope and test integrity cannot be waived');
-    if (kind === 'command') {
+    if (kind === 'command' || kind === 'dependencies' && step.command !== undefined) {
       const command = record(step.command, 'step.command'); keys(command, ['program','args'], 'step.command');
       const program = text(command.program, 'command.program', 4096); const base = program.split('/').at(-1)!;
       if (program !== base && (!program.startsWith('/') || program.split('/').some(part => part === '..' || part === '.'))) throw new ValidationError('command.program', 'executables must be supported names or absolute owner-approved paths');
@@ -61,6 +63,7 @@ export function validateVerificationProfile(input: unknown): VerificationProfile
       if (!Array.isArray(command.args) || command.args.length > 100 || command.args.some(arg => typeof arg !== 'string' || arg.length > 4096 || arg.includes('\0'))) throw new ValidationError('command.args', 'expected bounded argv strings');
       result.command = { program, args: command.args as string[] };
       if (!['typecheck','test','build','lint','scan','custom'].includes(String(step.role))) throw new ValidationError('step.role', 'command role is required'); result.role = step.role as GateStep['role'];
+      if (kind === 'dependencies' && result.role !== 'scan') throw new ValidationError('step.role', 'dependency scanner commands must use scan role');
       if (result.role === 'test') {
         const evidence = record(step.testReport, 'step.testReport'); keys(evidence, ['format','minimumTests'], 'step.testReport');
         if (!['tap','pytest'].includes(String(evidence.format))) throw new ValidationError('testReport.format', 'supported independent test summary is required');
@@ -94,10 +97,10 @@ export function assertExactGateSet(profile: VerificationProfile, steps: GateStep
 }
 
 export function gateReportStatus(profile: VerificationProfile | undefined, steps: GateStepResult[], harnessOutcome: GateReport['harnessOutcome']): GateReport['status'] {
+  if (profile) assertExactGateSet(profile, steps);
   if (harnessOutcome === 'interrupted') return 'cancelled';
   if (harnessOutcome === 'failed') return 'failed';
   if (!profile) return 'unavailable';
-  assertExactGateSet(profile, steps);
   const required = steps.filter(step => step.required);
   if (required.some(step => step.status === 'cancelled')) return 'cancelled';
   if (required.some(step => step.status === 'failed')) return 'failed';

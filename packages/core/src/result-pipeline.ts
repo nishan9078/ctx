@@ -2,6 +2,7 @@ import type { CommandActor } from '../../shared/src/domain.js';
 import type { FixtureVerification, LeaseClaim, WorkerOutcome } from '../../shared/src/scheduling.js';
 import type { TaskRepository } from '../../persistence/src/task-repository.js';
 import { CtxError } from '../../shared/src/errors.js';
+import { verifyEngineeringAttempt, type VerificationOptions } from './engineering-verification.js';
 import { verifyFixture } from './fixture-worker.js';
 export type AttemptFinalizer = (claim: LeaseClaim, outcome: Extract<WorkerOutcome, { kind: 'success' }>, actor: CommandActor, signal: AbortSignal) => Promise<void>;
 export function fixtureResultPipeline(repository: TaskRepository, verifier = (claim: LeaseClaim, actor: CommandActor, signal: AbortSignal): Promise<FixtureVerification> => verifyFixture(repository, claim, actor, signal)): AttemptFinalizer {
@@ -21,5 +22,12 @@ export function verificationHandoffPipeline(repository: TaskRepository): Attempt
     }
     signal.throwIfAborted();
     repository.queue.blockVerificationHandoff(claim, actor, { reason: 'Harness turn finished; required independent engineering verification is pending', artifactIds: ids });
+  };
+}
+
+export function engineeringResultPipeline(repository: TaskRepository, options: VerificationOptions = {}): AttemptFinalizer {
+  return async (claim, _outcome, actor, signal) => {
+    const report = await verifyEngineeringAttempt(repository, claim, actor, signal, options);
+    await repository.queue.finalizeVerification(claim, report.id, actor);
   };
 }

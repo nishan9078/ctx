@@ -26,12 +26,12 @@ export function syntaxEnvironment(source: NodeJS.ProcessEnv = process.env): Node
   const allowed = ['PATH', 'LANG', 'LC_ALL', 'TMPDIR', 'TEMP', 'SYSTEMROOT', 'WINDIR', 'CODEX_SANDBOX_NETWORK_DISABLED', 'CODEX_SANDBOX'];
   return Object.fromEntries(allowed.filter(key => source[key] !== undefined).map(key => [key, source[key]]));
 }
-export async function syntaxCheck(workspace: string, paths: string[], directory: string, signal?: AbortSignal): Promise<{ passed: boolean; unavailable: boolean; output: string }> {
+export async function syntaxCheck(workspace: string, paths: string[], directory: string, signal?: AbortSignal, execute: typeof runProcess = runProcess): Promise<{ passed: boolean; unavailable: boolean; output: string }> {
   await mkdir(join(directory, 'syntax-inputs'), { recursive: true });
   let passed = true; let unavailable = false; const output: string[] = []; let count = 0;
   async function javascript(source: string, module: boolean, label: string) {
     const artifact = join(directory, 'syntax-inputs', `${++count}${module ? '.mjs' : '.cjs'}`); await writeFile(artifact, source);
-    const result = await runProcess(process.execPath, ['--check', artifact], workspace, { signal, timeoutMs: 15_000, env: syntaxEnvironment() });
+    const result = await execute(process.execPath, ['--check', artifact], workspace, { signal, timeoutMs: 15_000, env: syntaxEnvironment() });
     passed &&= result.code === 0 && !result.timedOut;
     output.push(`${label}\ncommand: ${JSON.stringify([process.execPath, '--check', artifact])}\nexit: ${result.code}\n${result.output || 'Syntax accepted (code was not executed).'}\n`);
   }
@@ -69,7 +69,7 @@ export async function syntaxCheck(workspace: string, paths: string[], directory:
         if (extname(path) === '.js') { let type: string | undefined; try { type = JSON.parse(await readFile(join(workspace, 'package.json'), 'utf8')).type; } catch {} module = type === 'module' || type === undefined && ts.isExternalModule(ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS)); }
         await javascript(source, module, path);
       } else if (/\.py$/i.test(path)) {
-        try { const result = await runProcess('python3', ['-I', '-S', '-c', 'import ast,sys; ast.parse(open(sys.argv[1], encoding="utf-8").read(), filename=sys.argv[1]); print("Python syntax accepted; no execution")', join(workspace, path)], workspace, { signal, timeoutMs: 15_000, env: syntaxEnvironment() }); passed &&= result.code === 0; output.push(`${path}: python3 ast.parse; exit ${result.code}\n${result.output}`); }
+        try { const result = await execute('python3', ['-I', '-S', '-c', 'import ast,sys; ast.parse(open(sys.argv[1], encoding="utf-8").read(), filename=sys.argv[1]); print("Python syntax accepted; no execution")', join(workspace, path)], workspace, { signal, timeoutMs: 15_000, env: syntaxEnvironment() }); passed &&= result.code === 0; output.push(`${path}: python3 ast.parse; exit ${result.code}\n${result.output}`); }
         catch (error) { unavailable = true; passed = false; output.push(`${path}: Python parser unavailable: ${String(error)}`); }
       }
     } catch (error) { passed = false; output.push(`FAIL syntax ${path}: ${(error as Error).message}`); }

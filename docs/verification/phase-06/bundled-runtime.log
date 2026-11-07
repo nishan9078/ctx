@@ -1,0 +1,166 @@
+TAP version 13
+# Subtest: ordinary completion requires exactly the approved TypeScript/test/build/lint/security gates and retained commit evidence
+ok 1 - ordinary completion requires exactly the approved TypeScript/test/build/lint/security gates and retained commit evidence
+  ---
+  duration_ms: 4544.209905
+  type: 'test'
+  ...
+# Subtest: agent says done but typecheck failure prevents completion
+ok 2 - agent says done but typecheck failure prevents completion
+  ---
+  duration_ms: 4128.737702
+  type: 'test'
+  ...
+# Subtest: agent says done but tests failure prevents completion
+ok 3 - agent says done but tests failure prevents completion
+  ---
+  duration_ms: 4154.18956
+  type: 'test'
+  ...
+# Subtest: agent says done but build failure prevents completion
+ok 4 - agent says done but build failure prevents completion
+  ---
+  duration_ms: 2964.134929
+  type: 'test'
+  ...
+# Subtest: agent says done but secrets failure prevents completion
+ok 5 - agent says done but secrets failure prevents completion
+  ---
+  duration_ms: 3228.205298
+  type: 'test'
+  ...
+# Subtest: agent says done but omitted failure prevents completion
+ok 6 - agent says done but omitted failure prevents completion
+  ---
+  duration_ms: 2533.527531
+  type: 'test'
+  ...
+# Subtest: agent says done but scope failure prevents completion
+ok 7 - agent says done but scope failure prevents completion
+  ---
+  duration_ms: 2435.608423
+  type: 'test'
+  ...
+# Subtest: required unavailable scanner blocks despite passing independent fallback checks
+ok 8 - required unavailable scanner blocks despite passing independent fallback checks
+  ---
+  duration_ms: 2831.645514
+  type: 'test'
+  ...
+# Subtest: exact owner waiver is visible and consumed without rewriting unavailable coverage as passed
+ok 9 - exact owner waiver is visible and consumed without rewriting unavailable coverage as passed
+  ---
+  duration_ms: 2749.991177
+  type: 'test'
+  ...
+# Subtest: mock-only project commands never satisfy required live gates
+ok 10 - mock-only project commands never satisfy required live gates
+  ---
+  duration_ms: 711.442192
+  type: 'test'
+  ...
+# Subtest: per-step timeout stops its owned process and cannot become a passing gate
+ok 11 - per-step timeout stops its owned process and cannot become a passing gate
+  ---
+  duration_ms: 3564.333931
+  type: 'test'
+  ...
+# Subtest: unavailable approved container backend is blocked without executing project commands on the host
+ok 12 - unavailable approved container backend is blocked without executing project commands on the host
+  ---
+  duration_ms: 632.270138
+  type: 'test'
+  ...
+# Subtest: a successful verifier that changes deliverable source fails the final independent guards
+ok 13 - a successful verifier that changes deliverable source fails the final independent guards
+  ---
+  duration_ms: 2598.719252
+  type: 'test'
+  ...
+# Subtest: CLI registers immutable owner gates, grants an exact waiver and exposes hash-checked JSON/Markdown evidence
+ok 14 - CLI registers immutable owner gates, grants an exact waiver and exposes hash-checked JSON/Markdown evidence
+  ---
+  duration_ms: 3883.05571
+  type: 'test'
+  ...
+# Subtest: stopped attempts recover honest nonpassing reports without replaying checks or inventing historical gates
+ok 15 - stopped attempts recover honest nonpassing reports without replaying checks or inventing historical gates
+  ---
+  duration_ms: 118.60309
+  type: 'test'
+  ...
+# Subtest: completion rechecks evidence and cancellation after a passing report is published
+ok 16 - completion rechecks evidence and cancellation after a passing report is published
+  ---
+  duration_ms: 2575.011222
+  type: 'test'
+  ...
+# Subtest: profiles freeze exact gates and missing bindings cannot be upgraded mid-attempt
+ok 17 - profiles freeze exact gates and missing bindings cannot be upgraded mid-attempt
+  ---
+  duration_ms: 56.989595
+  type: 'test'
+  ...
+# Subtest: waivers require profile owner authority and bind one exact future attempt/check
+ok 18 - waivers require profile owner authority and bind one exact future attempt/check
+  ---
+  duration_ms: 33.000529
+  type: 'test'
+  ...
+# Subtest: profile schema rejects omitted immutable guards, unsupported commands and tests without evidence
+ok 19 - profile schema rejects omitted immutable guards, unsupported commands and tests without evidence
+  ---
+  duration_ms: 1.332881
+  type: 'test'
+  ...
+# Subtest: schema 6 upgrades without losing historical verification status and artifact references
+ok 20 - schema 6 upgrades without losing historical verification status and artifact references
+  ---
+  duration_ms: 49.201875
+  type: 'test'
+  ...
+# Subtest: scope uses explicit immutable include/exclude and generated paths without regex injection
+ok 21 - scope uses explicit immutable include/exclude and generated paths without regex injection
+  ---
+  duration_ms: 4.211925
+  type: 'test'
+  ...
+# Subtest: baseline test/script integrity catches deletion, replacement and omission
+ok 22 - baseline test/script integrity catches deletion, replacement and omission
+  ---
+  duration_ms: 2.213024
+  type: 'test'
+  ...
+# Subtest: independent summaries reject zero tests, skipped tests and missing coverage
+ok 23 - independent summaries reject zero tests, skipped tests and missing coverage
+  ---
+  duration_ms: 1.300978
+  type: 'test'
+  ...
+# Subtest: secret baseline emits only redacted finding metadata and fingerprints
+ok 24 - secret baseline emits only redacted finding metadata and fingerprints
+  ---
+  duration_ms: 1.091864
+  type: 'test'
+  ...
+# Subtest: dependency baseline distinguishes unknown coverage from a real exact advisory finding
+ok 25 - dependency baseline distinguishes unknown coverage from a real exact advisory finding
+  ---
+  duration_ms: 1.526384
+  type: 'test'
+  ...
+# Subtest: exact configured gates are required even for interrupted or failed harness reports
+ok 26 - exact configured gates are required even for interrupted or failed harness reports
+  ---
+  duration_ms: 3.38531
+  type: 'test'
+  ...
+1..26
+# tests 26
+# suites 0
+# pass 26
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 37456.940893

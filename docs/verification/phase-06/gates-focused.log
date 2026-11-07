@@ -1,0 +1,122 @@
+TAP version 13
+# (node:177193) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: ordinary completion requires exactly the approved TypeScript/test/build/lint/security gates and retained commit evidence
+ok 1 - ordinary completion requires exactly the approved TypeScript/test/build/lint/security gates and retained commit evidence
+  ---
+  duration_ms: 6371.824455
+  type: 'test'
+  ...
+# Subtest: agent says done but typecheck failure prevents completion
+ok 2 - agent says done but typecheck failure prevents completion
+  ---
+  duration_ms: 6502.168171
+  type: 'test'
+  ...
+# Subtest: agent says done but tests failure prevents completion
+ok 3 - agent says done but tests failure prevents completion
+  ---
+  duration_ms: 6523.831989
+  type: 'test'
+  ...
+# Subtest: agent says done but build failure prevents completion
+ok 4 - agent says done but build failure prevents completion
+  ---
+  duration_ms: 5462.979328
+  type: 'test'
+  ...
+# Subtest: agent says done but secrets failure prevents completion
+ok 5 - agent says done but secrets failure prevents completion
+  ---
+  duration_ms: 6570.665589
+  type: 'test'
+  ...
+# Subtest: agent says done but omitted failure prevents completion
+ok 6 - agent says done but omitted failure prevents completion
+  ---
+  duration_ms: 6699.875783
+  type: 'test'
+  ...
+# Subtest: agent says done but scope failure prevents completion
+ok 7 - agent says done but scope failure prevents completion
+  ---
+  duration_ms: 6209.071995
+  type: 'test'
+  ...
+# Subtest: required unavailable scanner blocks despite passing independent fallback checks
+ok 8 - required unavailable scanner blocks despite passing independent fallback checks
+  ---
+  duration_ms: 6455.019685
+  type: 'test'
+  ...
+# Subtest: exact owner waiver is visible and consumed without rewriting unavailable coverage as passed
+ok 9 - exact owner waiver is visible and consumed without rewriting unavailable coverage as passed
+  ---
+  duration_ms: 6949.759891
+  type: 'test'
+  ...
+# Subtest: mock-only project commands never satisfy required live gates
+ok 10 - mock-only project commands never satisfy required live gates
+  ---
+  duration_ms: 2674.973086
+  type: 'test'
+  ...
+# Subtest: per-step timeout stops its owned process and cannot become a passing gate
+ok 11 - per-step timeout stops its owned process and cannot become a passing gate
+  ---
+  duration_ms: 7098.23482
+  type: 'test'
+  ...
+# (node:177194) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: CLI registers immutable owner gates, grants an exact waiver and exposes hash-checked JSON/Markdown evidence
+ok 12 - CLI registers immutable owner gates, grants an exact waiver and exposes hash-checked JSON/Markdown evidence
+  ---
+  duration_ms: 6899.698989
+  type: 'test'
+  ...
+# Subtest: stopped attempts recover honest nonpassing reports without replaying checks or inventing historical gates
+ok 13 - stopped attempts recover honest nonpassing reports without replaying checks or inventing historical gates
+  ---
+  duration_ms: 195.476458
+  type: 'test'
+  ...
+# Subtest: scope uses explicit immutable include/exclude and generated paths without regex injection
+ok 14 - scope uses explicit immutable include/exclude and generated paths without regex injection
+  ---
+  duration_ms: 3.92854
+  type: 'test'
+  ...
+# Subtest: baseline test/script integrity catches deletion, replacement and omission
+ok 15 - baseline test/script integrity catches deletion, replacement and omission
+  ---
+  duration_ms: 2.073033
+  type: 'test'
+  ...
+# Subtest: independent summaries reject zero tests, skipped tests and missing coverage
+ok 16 - independent summaries reject zero tests, skipped tests and missing coverage
+  ---
+  duration_ms: 1.112727
+  type: 'test'
+  ...
+# Subtest: secret baseline emits only redacted finding metadata and fingerprints
+ok 17 - secret baseline emits only redacted finding metadata and fingerprints
+  ---
+  duration_ms: 1.17919
+  type: 'test'
+  ...
+# Subtest: dependency baseline distinguishes unknown coverage from a real exact advisory finding
+ok 18 - dependency baseline distinguishes unknown coverage from a real exact advisory finding
+  ---
+  duration_ms: 1.59111
+  type: 'test'
+  ...
+1..18
+# tests 18
+# suites 0
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 68247.714908
