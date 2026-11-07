@@ -1318,15 +1318,15 @@ Recovery policies, checkpoint format, retry scheduler, diagnosis evidence, mock 
 
 ### Engineering tasks
 
-- [ ] `P08-01` Extract a lightweight `ctxd` command listener and timer loop from the interactive UI.
-- [ ] `P08-02` Build local authenticated IPC or loopback API for CLI/TUI and future Discord ingress.
-- [ ] `P08-03` Persist timers and rehydrate them after daemon restart.
-- [ ] `P08-04` Implement `SENTINEL_IDLE`, `EXECUTING`, `WAITING_CAPACITY`, `PAUSED` observable runtime states.
-- [ ] `P08-05` Stop all idle harness processes; keep DB, schedule, and message ingress available.
-- [ ] `P08-06` Write `systemd --user` unit with restart policy, environment file, log and resource settings.
-- [ ] `P08-07` Implement `ctx daemon start|stop|status` and `ctx doctor`.
+- [x] `P08-01` Extract a lightweight `ctxd` command listener and timer loop from the interactive UI.
+- [x] `P08-02` Build local authenticated IPC or loopback API for CLI/TUI and future Discord ingress.
+- [x] `P08-03` Persist timers and rehydrate them after daemon restart.
+- [x] `P08-04` Implement `SENTINEL_IDLE`, `EXECUTING`, `WAITING_CAPACITY`, `PAUSED` observable runtime states.
+- [x] `P08-05` Stop all idle harness processes; keep DB, schedule, and message ingress available.
+- [x] `P08-06` Write `systemd --user` unit with restart policy, environment file, log and resource settings.
+- [x] `P08-07` Implement `ctx daemon start|stop|status` and `ctx doctor`.
 - [ ] `P08-08` Test logout/re-login and service restart; separately document actual laptop suspend limitations.
-- [ ] `P08-09` Add clean shutdown behavior to avoid corrupted artifacts or orphaned work.
+- [x] `P08-09` Add clean shutdown behavior to avoid corrupted artifacts or orphaned work.
 
 ### Deliverables
 
@@ -1334,12 +1334,14 @@ Persistent daemon, local command API, user service install instructions, wake/id
 
 ### Exit gate
 
-- [ ] Submit task while daemon idle; worker starts without terminal UI open.
-- [ ] After queue drains, no Codex/OpenCode inference worker remains running.
-- [ ] Restart `ctxd`; persisted queue/timers/outbox are recovered.
-- [ ] CLI/TUI disconnection does not stop work.
+- [x] Submit task while daemon idle; worker starts without terminal UI open.
+- [x] After queue drains, no Codex/OpenCode inference worker remains running.
+- [x] Restart `ctxd`; persisted queue/timers/outbox are recovered.
+- [x] CLI/TUI disconnection does not stop work.
 
 **Avoid:** Confusing Linux user-service lingering with hardware wake-on-LAN.
+
+**Implementation record (2026-11-07):** [Phase 08 report](docs/verification/phase-08/REPORT.md). Local daemon exit gate PASS: 321 regression passes/six existing opt-in skips, five final IPC/lifecycle checks on each runtime, and a real temporary systemd service restart. P08-08 remains open for actual OS logout/re-login; no lingering or hardware settings were changed.
 
 ---
 
