@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdir, rename, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
+import { historicalDatabase, copyHistoricalFixture } from '../fixtures/historical-database.js';
 import { codexFixture } from '../fixtures/codex.js';
 import { repositoryActor as actor, submissionFixture } from '../fixtures/repository.js';
 import { TaskRepository } from '../../packages/persistence/src/task-repository.js';
@@ -65,9 +66,9 @@ test('schema 5 migrates with historical event/session preservation and requires 
   f.repository.queue.settle(previous, { kind: 'blocked', reason: 'Historical stopped attempt' }, actor);
   f.repository.close();
   try {
-    const db = new DatabaseSync(f.filename);
-    db.exec('DROP TABLE ctx_workspace_access; DROP TABLE ctx_workspaces; DROP TABLE ctx_project_identities; DELETE FROM ctx_schema_migrations WHERE version=6; PRAGMA user_version=5;'); db.close();
-    const upgraded = await openOrchestrationDatabase(f.filename);
+    const historical = join(f.root, 'historical.sqlite'); const db = historicalDatabase(historical, 5);
+    copyHistoricalFixture(f.filename, db, ['ctx_projects','ctx_tasks','ctx_attempts','ctx_harness_sessions','ctx_worker_events','ctx_events','ctx_outbox']); db.close();
+    const upgraded = await openOrchestrationDatabase(historical);
     try {
       assert.equal(upgraded.migratedFrom, 5); assert.ok(upgraded.backupPath);
       assert.equal((upgraded.db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, currentSchemaVersion);
@@ -77,7 +78,7 @@ test('schema 5 migrates with historical event/session preservation and requires 
       assert.equal((upgraded.db.prepare('SELECT external_session_id FROM ctx_harness_sessions WHERE attempt_id=?').get(previous.attempt.id) as { external_session_id: string }).external_session_id, 'schema5-thread');
       assert.equal((upgraded.db.prepare('SELECT count(*) AS n FROM ctx_worker_events WHERE attempt_id=?').get(previous.attempt.id) as { n: number }).n, 1);
     } finally { upgraded.db.close(); }
-    const reopened = await TaskRepository.open(f.filename);
+    const reopened = await TaskRepository.open(historical);
     try {
       reopened.submitTask(submissionFixture('needs-registration'), actor); reopened.queue.refresh(actor);
       assert.equal(reopened.getTask('needs-registration').state, 'blocked');

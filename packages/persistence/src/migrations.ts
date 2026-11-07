@@ -5,6 +5,7 @@ import { dirname, join, resolve } from 'node:path';
 import { schema } from './schema.js';
 import { orchestrationSchema } from './orchestration-schema.js';
 import { queueSchema } from './queue-schema.js';
+import { verificationSchema } from './verification-schema.js';
 import { workspaceSchema } from './workspace-schema.js';
 import { workerEventsSchema } from './worker-events-schema.js';
 import { CtxError } from '../../shared/src/errors.js';
@@ -16,8 +17,9 @@ export const migrations: readonly Migration[] = [
   { version: 4, name: 'durable-queue-ownership', sql: queueSchema },
   { version: 5, name: 'codex-worker-events', sql: workerEventsSchema },
   { version: 6, name: 'owned-workspace-runtime', sql: workspaceSchema },
+  { version: 7, name: 'immutable-verification-gates', sql: verificationSchema },
 ];
-export const currentSchemaVersion = 6;
+export const currentSchemaVersion = 7;
 const checksum = (migration: Migration) => createHash('sha256').update(migration.sql).digest('hex');
 const versionOf = (db: DatabaseSync) => (db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
 export interface OpenDatabaseResult { db: DatabaseSync; migratedFrom: number; backupPath?: string }

@@ -12,6 +12,7 @@ import { assertTaskTransition } from '../../shared/src/transitions.js';
 import { redactForDiagnostics } from '../../shared/src/redact.js';
 import { artifactPolicy, type ArtifactRecord } from '../../shared/src/artifacts.js';
 import { ordinaryDirectory, recordedManifestHash, sha256, validateArtifact, verifyArtifact } from './artifact-files.js';
+import { VerificationRegistry } from './verification-registry.js';
 import { WorkspaceRegistry } from './workspace-registry.js';
 import { QueueOperations } from './queue-operations.js';
 
@@ -26,10 +27,12 @@ export class TaskRepository {
   readonly #env: NodeJS.ProcessEnv;
   readonly queue: QueueOperations;
   readonly workspaces: WorkspaceRegistry;
+  readonly verification: VerificationRegistry;
   private constructor(db: DatabaseSync, env: NodeJS.ProcessEnv, readonly dataDirectory: string, readonly migrationBackupPath?: string) {
     this.#db = db; this.#env = env;
     this.queue = new QueueOperations({ db, dataDirectory, write: work => this.write(work), read: work => this.read(work), task: id => this.task(id), project: id => this.getProject(id), actor: value => this.actor(value), safeText: (value, path) => this.safeText(value, path), event: (...args) => this.event(...args), verifyArtifact: id => this.verifyStoredArtifact(id), redactText: value => redactForDiagnostics(value, this.#env) as string });
     this.workspaces = new WorkspaceRegistry({ db, dataDirectory, write: work => this.write(work), read: work => this.read(work), assertLease: claim => this.queue.assertLease(claim), task: id => this.task(id), event: (id, type, actor, payload, taskId) => this.event('workspace', id, type, this.actor(actor), type, payload, taskId) });
+    this.verification = new VerificationRegistry({ db, dataDirectory, verifyArtifact: id => this.verifyStoredArtifact(id), write: work => this.write(work), read: work => this.read(work), assertLease: claim => this.queue.assertLease(claim), task: id => this.task(id), project: id => this.getProject(id), actor: actor => this.actor(actor), redactText: value => redactForDiagnostics(value, this.#env) as string, event: (...args) => this.event(...args) });
   }
   static async open(filename: string, env: NodeJS.ProcessEnv = process.env): Promise<TaskRepository> {
     const opened = await openOrchestrationDatabase(filename);

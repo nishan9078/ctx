@@ -1,0 +1,126 @@
+TAP version 13
+# (node:171944) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: worker events and sessions are fenced, replayable and survive reopen; handoff never completes task
+ok 1 - worker events and sessions are fenced, replayable and survive reopen; handoff never completes task
+  ---
+  duration_ms: 59.128479
+  type: 'test'
+  ...
+# Subtest: schema 4 backup remains restorable and migrates to the current schema with a backup
+ok 2 - schema 4 backup remains restorable and migrates to the current schema with a backup
+  ---
+  duration_ms: 46.506249
+  type: 'test'
+  ...
+# Subtest: dead scheduler recovery holds capacity while its recorded worker remains alive or unobservable
+ok 3 - dead scheduler recovery holds capacity while its recorded worker remains alive or unobservable
+  ---
+  duration_ms: 25.65999
+  type: 'test'
+  ...
+# (node:171945) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: fresh V1 database initializes durable settings and all tables without a legacy task import
+ok 4 - fresh V1 database initializes durable settings and all tables without a legacy task import
+  ---
+  duration_ms: 31.526485
+  type: 'test'
+  ...
+# Subtest: v2 migration backs up committed WAL state and preserves legacy task/event data and APIs
+ok 5 - v2 migration backs up committed WAL state and preserves legacy task/event data and APIs
+  ---
+  duration_ms: 27.525096
+  type: 'test'
+  ...
+# Subtest: v1 legacy resource migration remains lossless on the V1 initialization path
+ok 6 - v1 legacy resource migration remains lossless on the V1 initialization path
+  ---
+  duration_ms: 16.290156
+  type: 'test'
+  ...
+# Subtest: malformed migration rolls back all schema/version/history changes and keeps a recoverable backup
+ok 7 - malformed migration rolls back all schema/version/history changes and keeps a recoverable backup
+  ---
+  duration_ms: 29.433339
+  type: 'test'
+  ...
+# Subtest: startup rejects future versions, unversioned nonempty databases, and changed migration history
+ok 8 - startup rejects future versions, unversioned nonempty databases, and changed migration history
+  ---
+  duration_ms: 19.982737
+  type: 'test'
+  ...
+# Subtest: migration refuses outstanding legacy leases instead of guessing worker liveness
+ok 9 - migration refuses outstanding legacy leases instead of guessing worker liveness
+  ---
+  duration_ms: 22.648492
+  type: 'test'
+  ...
+# Subtest: V1 schema enforces references, deduplication, one active attempt, and immutable events
+ok 10 - V1 schema enforces references, deduplication, one active attempt, and immutable events
+  ---
+  duration_ms: 14.805533
+  type: 'test'
+  ...
+# (node:171946) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: profiles freeze exact gates and missing bindings cannot be upgraded mid-attempt
+ok 11 - profiles freeze exact gates and missing bindings cannot be upgraded mid-attempt
+  ---
+  duration_ms: 58.583784
+  type: 'test'
+  ...
+# Subtest: waivers require profile owner authority and bind one exact future attempt/check
+ok 12 - waivers require profile owner authority and bind one exact future attempt/check
+  ---
+  duration_ms: 26.021645
+  type: 'test'
+  ...
+# Subtest: profile schema rejects omitted immutable guards, unsupported commands and tests without evidence
+ok 13 - profile schema rejects omitted immutable guards, unsupported commands and tests without evidence
+  ---
+  duration_ms: 1.028092
+  type: 'test'
+  ...
+# Subtest: schema 6 upgrades without losing historical verification status and artifact references
+ok 14 - schema 6 upgrades without losing historical verification status and artifact references
+  ---
+  duration_ms: 43.08907
+  type: 'test'
+  ...
+# (node:171947) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: workspace reservation is fenced, audited, exclusive and released only when the attempt settles
+ok 15 - workspace reservation is fenced, audited, exclusive and released only when the attempt settles
+  ---
+  duration_ms: 79.97141
+  type: 'test'
+  ...
+# Subtest: ownership intent and workspace access roll back together if immutable audit insertion fails
+ok 16 - ownership intent and workspace access roll back together if immutable audit insertion fails
+  ---
+  duration_ms: 25.933057
+  type: 'test'
+  ...
+# Subtest: project inode replacement or symlink substitution blocks claims without changing owner files
+ok 17 - project inode replacement or symlink substitution blocks claims without changing owner files
+  ---
+  duration_ms: 38.106719
+  type: 'test'
+  ...
+# Subtest: schema 5 migrates with historical event/session preservation and requires explicit project identity registration
+ok 18 - schema 5 migrates with historical event/session preservation and requires explicit project identity registration
+  ---
+  duration_ms: 52.224988
+  type: 'test'
+  ...
+1..18
+# tests 18
+# suites 0
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 432.37448

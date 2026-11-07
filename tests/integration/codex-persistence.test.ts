@@ -9,6 +9,7 @@ import { openOrchestrationDatabase, migrations } from '../../packages/persistenc
 import { createBackup, restoreBackup } from '../../packages/persistence/src/backup.js';
 import { sha256 } from '../../packages/persistence/src/artifact-files.js';
 import { repositoryActor as actor } from '../fixtures/repository.js';
+import { historicalDatabase } from '../fixtures/historical-database.js';
 import { codexFixture } from '../fixtures/codex.js';
 
 test('worker events and sessions are fenced, replayable and survive reopen; handoff never completes task', async () => {
@@ -38,9 +39,7 @@ test('worker events and sessions are fenced, replayable and survive reopen; hand
 test('schema 4 backup remains restorable and migrates to the current schema with a backup', async () => {
   const root = await mkdtemp(join(tmpdir(), 'ctx-v4-backup-')); const filename = join(root, 'state.sqlite');
   try {
-    const opened = await openOrchestrationDatabase(filename); opened.db.close();
-    const db = new DatabaseSync(filename);
-    db.exec('DROP TABLE ctx_workspace_access; DROP TABLE ctx_workspaces; DROP TABLE ctx_project_identities; DROP TABLE ctx_worker_events; DROP TABLE ctx_worker_processes; DELETE FROM ctx_schema_migrations WHERE version>=5; PRAGMA user_version=4;'); db.close();
+    const db = historicalDatabase(filename, 4); db.close();
     const backup = await createBackup(filename, join(root, 'bundle')); assert.equal(backup.manifest.databaseVersion, 4);
     const restored = await restoreBackup(join(root, 'bundle'), join(root, 'restored'));
     const upgraded = await openOrchestrationDatabase(restored.database);
