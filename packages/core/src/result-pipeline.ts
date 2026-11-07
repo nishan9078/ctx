@@ -1,3 +1,5 @@
+import { writeRecoveryCheckpoint } from './recovery-checkpoint.js';
+import { recoveryPolicy, type RecoveryPolicy } from '../../shared/src/recovery-policy.js';
 import type { CommandActor } from '../../shared/src/domain.js';
 import type { FixtureVerification, LeaseClaim, WorkerOutcome } from '../../shared/src/scheduling.js';
 import type { TaskRepository } from '../../persistence/src/task-repository.js';
@@ -25,9 +27,15 @@ export function verificationHandoffPipeline(repository: TaskRepository): Attempt
   };
 }
 
-export function engineeringResultPipeline(repository: TaskRepository, options: VerificationOptions = {}): AttemptFinalizer {
+export function engineeringResultPipeline(repository: TaskRepository, options: VerificationOptions = {}, recovery?: Partial<RecoveryPolicy>): AttemptFinalizer {
   return async (claim, _outcome, actor, signal) => {
+    if (recovery) {
+      const remaining = recoveryPolicy(recovery).maxElapsedMs - (Date.now() - Date.parse(repository.queue.attempts(claim.task.spec.id)[0].startedAt));
+      if (remaining <= 0) throw new CtxError('BUDGET_EXHAUSTED', 'Aggregate recovery time budget reached before verification');
+      signal = AbortSignal.any([signal, AbortSignal.timeout(remaining)]);
+    }
     const report = await verifyEngineeringAttempt(repository, claim, actor, signal, options);
+    if (recovery) await writeRecoveryCheckpoint(repository, claim, report, recoveryPolicy(recovery), actor);
     await repository.queue.finalizeVerification(claim, report.id, actor);
   };
 }

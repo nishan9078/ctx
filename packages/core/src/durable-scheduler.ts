@@ -78,7 +78,7 @@ export class DurableScheduler {
     for (;;) {
       this.tick(); const status = this.repository.queue.status();
       if (!this.#active.size) {
-        if (!options.waitForDeadlines || status.configuration.paused || !status.nextRunAt) { await this.onReconcile?.(this.#actor); return this.repository.queue.status(); }
+        if (!options.waitForDeadlines || status.configuration.paused || !status.nextRunAt) { await this.onReconcile?.(this.#actor); const refreshed = this.repository.queue.status(); if (options.waitForDeadlines && !refreshed.configuration.paused && refreshed.nextRunAt) continue; return refreshed; }
         await delay(Math.min(50, Math.max(1, Date.parse(status.nextRunAt) - Date.now())));
       } else await Promise.race([...this.#active.values()].map(active => active.promise).concat(delay(20)));
       if (Date.now() >= end) throw new CtxError('TIMEOUT', 'Observation deadline reached; active workers remain managed until stopped or completed');

@@ -1,3 +1,6 @@
+import { readRecoveryCheckpoint } from './recovery-checkpoint.js';
+import { reconcileRecovery } from './queue-recovery.js';
+import { classifyFailure, recoveryPolicy, type RecoveryPolicy } from '../../shared/src/recovery-policy.js';
 import { readFile, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { CommandActor } from '../../shared/src/domain.js';
@@ -22,6 +25,7 @@ import { workerRuntimeBudget, type WorkerRuntimeBudget } from '../../shared/src/
 import { verifyEngineeringAttempt, reconcileVerificationReports, type VerificationOptions } from './engineering-verification.js';
 import { engineeringResultPipeline } from './result-pipeline.js';
 export interface CodexQueueOptions {
+  recovery?: Partial<RecoveryPolicy>;
   executor?: CodexExecutor;
   probe?: () => Promise<CodexReadiness>;
   model?: string;
@@ -46,8 +50,16 @@ export class CodexQueueWorker implements QueueWorker {
     const emit = (type: string, payload: unknown, kind: 'canonical' | 'diagnostic' = 'canonical') => {
       this.repository.queue.appendWorkerEvent(claim, { kind, type, payload: kind === 'canonical' ? { taskId: claim.task.spec.id, attemptId: claim.attempt.id, timestamp: new Date().toISOString(), type, ...payload as object } : payload, deliveryId: `worker-${++delivery}` });
     };
-    const fail = (code: string, reason: string, retryable = false) => { emit('failed', { code, message: reason, retryable }); };
+    const fail = (code: string, reason: string, retryable = false) => { emit('failed', { code, message: reason, retryable, diagnosis: classifyFailure(code, reason) }); };
     try {
+      if (this.options.recovery) {
+        const policy = recoveryPolicy(this.options.recovery);
+        if (policy.maxTokens === 0 || policy.maxCostUsd !== undefined) throw new CtxError('BUDGET_EXHAUSTED','Zero token budget or required provider cost accounting unavailable');
+        const started = this.repository.queue.attempts(claim.task.spec.id)[0].startedAt;
+        const remaining = policy.maxElapsedMs - (Date.now() - Date.parse(started));
+        if (remaining <= 0) throw new CtxError('BUDGET_EXHAUSTED','Task recovery elapsed-time budget reached');
+        signal = AbortSignal.any([signal, AbortSignal.timeout(remaining)]);
+      }
       signal.throwIfAborted();
       const frozen = this.repository.verification.bind(claim, actor);
       emit('runtime.budget', budget, 'diagnostic');
@@ -59,8 +71,17 @@ export class CodexQueueWorker implements QueueWorker {
       if (!readiness.cliAvailable || readiness.sdkVersion === 'unknown') { fail('HARNESS_UNAVAILABLE', 'Codex CLI or SDK unavailable'); return { kind: 'blocked', reason: 'Codex CLI or SDK unavailable; inspect preflight diagnostics' }; }
       if (readiness.auth === 'none' || readiness.auth === 'unknown') { fail('AUTH_REQUIRED', 'Codex authentication is unavailable'); return { kind: 'blocked', reason: 'Codex authentication required' }; }
       let resumeSession: string | undefined;
-      if (this.options.resume?.taskId === claim.task.spec.id) {
-        const priorId = this.options.resume.attemptId;
+      let resume = this.options.resume; let repairPacket = '';
+      if (this.options.recovery && !resume) {
+        const previous = this.repository.queue.attempts(claim.task.spec.id).filter(a=>a.sequence < claim.attempt.sequence).at(-1);
+        if (previous) {
+          const checkpoint = await readRecoveryCheckpoint(this.repository, claim.task.spec.id, previous.id, recoveryPolicy(this.options.recovery));
+          if (!checkpoint) throw new CtxError('CONFLICT','Recovery requires a verified retained checkpoint');
+          resume = {taskId:claim.task.spec.id,attemptId:previous.id}; repairPacket = '\nRepair only the retained implementation using these independent failures. Do not weaken tests or gates. Rerun all required checks.\n' + checkpoint.failurePacket;
+        }
+      }
+      if (resume?.taskId === claim.task.spec.id) {
+        const priorId = resume.attemptId;
         const prior = this.repository.queue.attempts(claim.task.spec.id).find(attempt => attempt.id === priorId);
         if (!prior || ['leased', 'running', 'verifying'].includes(prior.state) || prior.harnessId !== 'codex') throw new CtxError('CONFLICT', 'Resume requires a quiescent prior Codex attempt of this task');
         const descriptor = this.repository.artifacts(claim.task.spec.id).find(artifact => artifact.attemptId === priorId && artifact.kind === 'codex-workspace');
@@ -83,7 +104,7 @@ export class CodexQueueWorker implements QueueWorker {
         } });
         workspace = owned.identity.worktree;
       }
-      await save('codex-workspace', JSON.stringify({ workspace, workspaceOwnerAttemptId, baseSha: owned.identity.baseSha, branch: owned.identity.branch, taskId: claim.task.spec.id, attemptId: claim.attempt.id, specHash: sha256(JSON.stringify(claim.task.spec)), resumedFrom: this.options.resume?.taskId === claim.task.spec.id ? this.options.resume.attemptId : null }));
+      await save('codex-workspace', JSON.stringify({ workspace, workspaceOwnerAttemptId, baseSha: owned.identity.baseSha, branch: owned.identity.branch, taskId: claim.task.spec.id, attemptId: claim.attempt.id, specHash: sha256(JSON.stringify(claim.task.spec)), resumedFrom: resume?.taskId === claim.task.spec.id ? resume.attemptId : null }));
       await save('codex-task-packet', JSON.stringify(buildCodexTaskPacket(claim.task.spec)));
       if (resumeSession) this.repository.queue.recordSession(claim, { externalSessionId: resumeSession, version: readiness.sdkVersion });
       if (frozen.profile) {
@@ -93,7 +114,7 @@ export class CodexQueueWorker implements QueueWorker {
         const descriptor = await store.writeBinary({ taskId: claim.task.spec.id, attemptId: claim.attempt.id, kind: 'verification-baseline' }, Buffer.from(JSON.stringify({ schemaVersion: 1, workspaceId: owned.id, baseSha: owned.identity.baseSha, profileHash: frozen.profileHash, taskSpecHash: frozen.taskSpecHash, entries: baseline.entries })), this.repository, actor); evidence.push(descriptor.id);
       }
       const executor = this.options.executor ?? new SupervisedCodexExecutor({ runtime: budget });
-      const result = await executor.run({ prompt: formatCodexPrompt(buildCodexTaskPacket(claim.task.spec)), workspacePath: workspace, resourceRoot: owned.identity.root, runtimeBudget: budget, onHealth: health => emit('runtime.health', health, 'diagnostic'), sessionId: resumeSession, model: this.options.model, signal,
+      const result = await executor.run({ prompt: formatCodexPrompt(buildCodexTaskPacket(claim.task.spec)) + repairPacket, workspacePath: workspace, resourceRoot: owned.identity.root, runtimeBudget: budget, onHealth: health => emit('runtime.health', health, 'diagnostic'), sessionId: resumeSession, model: this.options.model, signal,
         onProcess: info => {
           processStarted = true;
           this.repository.queue.recordWorkerProcess(claim, info);
@@ -107,6 +128,17 @@ export class CodexQueueWorker implements QueueWorker {
           const normalized = await normalizeCodexEvent(raw, { taskId: claim.task.spec.id, attemptId: claim.attempt.id, sequence: 0, timestamp: new Date().toISOString() }, tracker, {
             persistCommandOutput: async command => ({ artifactId: await save('codex-command', JSON.stringify(command), 'log') }),
           });
+          if (this.options.recovery && tracker.usage) {
+            const policy = recoveryPolicy(this.options.recovery);
+            let tokens = tracker.usage.inputTokens + tracker.usage.outputTokens;
+            for (const previous of this.repository.queue.attempts(claim.task.spec.id).filter(a=>a.id!==claim.attempt.id)) {
+              const usages = this.repository.queue.workerEvents(previous.id).filter(e=>e.type==='usage_reported');
+              const usage = usages.at(-1)?.payload as {inputTokens?:number;outputTokens?:number} | undefined;
+              tokens += (usage?.inputTokens ?? policy.maxTokens) + (usage?.outputTokens ?? 0);
+            }
+            if (tokens >= policy.maxTokens) throw new CtxError('BUDGET_EXHAUSTED','Task reported-token budget reached');
+            if (policy.maxCostUsd !== undefined) throw new CtxError('BUDGET_EXHAUSTED','Provider does not report verified cost; configured cost budget cannot be established');
+          }
           if (tracker.sessionId) this.repository.queue.recordSession(claim, { externalSessionId: tracker.sessionId, version: readiness.sdkVersion });
           if (normalized.kind === 'events') for (const event of normalized.events) {
             if (['tool_started', 'tool_completed', 'command_executed', 'files_changed'].includes(event.type)) effectsPossible = true;
@@ -126,6 +158,7 @@ export class CodexQueueWorker implements QueueWorker {
         emit('completed', { summary: tracker.summary || 'Codex turn completed', artifactIds: evidence });
         return { kind: 'success', artifactIds: evidence };
       }
+      emit('recovery.diagnosis', classifyFailure(result.exitSignal ? 'PROCESS_CRASH' : undefined, result.stderrTail), 'diagnostic');
       const message = (tracker.errorMessage || result.stderrTail || 'Codex exited without a valid completed turn').slice(0, 4000);
       if (/auth|unauthorized|log.?in|401|403/i.test(message)) { fail('AUTH_REQUIRED', message); return { kind: 'blocked', reason: 'Codex authentication or authorization failed; inspect attempt log' }; }
       if (!effectsPossible && /rate.?limit|too many requests|\b429\b/i.test(message)) { fail('RATE_LIMIT', message, true); return { kind: 'capacity', reason: 'Codex explicitly reported a rate limit before observable tool activity', delayMs: 1000 }; }
@@ -141,6 +174,7 @@ export class CodexQueueWorker implements QueueWorker {
         return { kind: 'blocked', reason: 'Codex execution interrupted' };
       }
       const reason = error instanceof CtxError ? error.message : 'Codex execution or environment failed; inspect retained workspace and events';
+      emit('recovery.diagnosis', classifyFailure((error as NodeJS.ErrnoException).code, String(error)), 'diagnostic');
       const safeSpawnRetry = !processStarted && !effectsPossible && ['EAGAIN', 'EMFILE', 'ENFILE'].includes((error as NodeJS.ErrnoException).code ?? '');
       fail(error instanceof CtxError ? error.code : 'HARNESS_UNAVAILABLE', reason, safeSpawnRetry);
       return safeSpawnRetry ? { kind: 'failed', reason, retryable: true, delayMs: 1000 } : { kind: 'blocked', reason };
@@ -148,8 +182,8 @@ export class CodexQueueWorker implements QueueWorker {
   }
 }
 export function createCodexQueueScheduler(repository: TaskRepository, options: CodexQueueOptions & { leaseMs?: number } = {}): DurableScheduler {
-  return new DurableScheduler(repository, new CodexQueueWorker(repository, options), { leaseMs: options.leaseMs, finalizer: engineeringResultPipeline(repository, { runtime: options.runtime, ...options.verification }),
-    async onReconcile(actor) { await reconcileVerificationReports(repository, actor); },
+  return new DurableScheduler(repository, new CodexQueueWorker(repository, options), { leaseMs: options.leaseMs, finalizer: engineeringResultPipeline(repository, { runtime: options.runtime, ...options.verification }, options.recovery),
+    async onReconcile(actor) { await reconcileVerificationReports(repository, actor); if (options.recovery) await reconcileRecovery(repository, actor, recoveryPolicy(options.recovery)); },
     async onWorkerSettled(claim, outcome, actor, signal) {
       if (repository.verification.reports(claim.task.spec.id).some(report => report.attemptId === claim.attempt.id && report.reportArtifactId)) return;
       await verifyEngineeringAttempt(repository, claim, actor, signal, { runtime: options.runtime, ...options.verification }, { harnessOutcome: signal.aborted ? 'interrupted' : 'failed', reason: outcome.kind === 'success' ? 'Worker interrupted before verification' : outcome.reason });

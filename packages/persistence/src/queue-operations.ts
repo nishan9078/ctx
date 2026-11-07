@@ -76,7 +76,7 @@ export class QueueOperations {
   private control(id: string): 'pause' | 'cancel' | null { return (this.#c.db.prepare('SELECT control_intent FROM ctx_tasks WHERE id=?').get(id) as { control_intent: 'pause' | 'cancel' | null }).control_intent; }
   private epoch(id: string): number { return (this.#c.db.prepare('SELECT retry_epoch FROM ctx_tasks WHERE id=?').get(id) as { retry_epoch: number }).retry_epoch; }
   private count(id: string): number { return (this.#c.db.prepare('SELECT COUNT(*) AS n FROM ctx_attempts WHERE task_id=? AND retry_epoch=?').get(id, this.epoch(id)) as { n: number }).n; }
-  private pendingApproval(id: string): boolean { return !!this.#c.db.prepare("SELECT id FROM ctx_approvals WHERE task_id=? AND decision='pending' LIMIT 1").get(id); }
+  private pendingApproval(id: string): boolean { return !!this.#c.db.prepare("SELECT id FROM ctx_approvals WHERE task_id=? AND decision IN ('pending','rejected') LIMIT 1").get(id); }
   private active(id: string): boolean { return !!this.#c.db.prepare("SELECT id FROM ctx_attempts WHERE task_id=? AND state IN ('leased','running','verifying') LIMIT 1").get(id) || !!this.#c.db.prepare('SELECT task_id FROM ctx_leases WHERE task_id=?').get(id); }
   refresh(context: CommandActor): void {
     const actor = this.#c.actor(context);
@@ -216,6 +216,19 @@ export class QueueOperations {
       this.end(claim, passed || report.status === 'unavailable' || report.status === 'mock_verified' ? 'completed' : report.status === 'failed' ? 'failed' : 'interrupted');
       this.move(task.spec.id, passed ? 'completed' : report.status === 'failed' ? 'failed' : 'blocked', actor,
         passed ? `Configured independent verification passed${report.status === 'passed_with_waivers' ? ' with exact recorded owner waivers' : ''}; report ${runId}` : `Verification ${report.status}; required coverage is not satisfied; report ${runId}`);
+    });
+  }
+  scheduleRecovery(taskId: string, attemptId: string, delayMs: number, reason: string, context: CommandActor, blocked = false): void {
+    const actor = this.#c.actor(context); integer(delayMs, 0, 86400000, 'recovery.delayMs');
+    if (!['local','cli'].includes(actor.source)) throw new CtxError('UNAUTHORIZED', 'Recovery requires trusted local authority');
+    this.#c.write(() => {
+      const task = this.#c.task(taskId); const latest = this.attempts(taskId).at(-1);
+      if (task.state !== 'failed' || this.active(taskId) || latest?.id !== attemptId) return;
+      const denied = !!this.#c.db.prepare("SELECT 1 FROM ctx_approvals WHERE task_id=? AND decision<>'approved' LIMIT 1").get(taskId);
+      const stop = blocked || denied || this.count(taskId) >= task.spec.maxAttempts;
+      const state = stop ? 'blocked' : 'recovering';
+      this.#c.db.prepare('UPDATE ctx_tasks SET state=?,revision=revision+1,next_run_at=?,reason=?,updated_at=? WHERE id=?').run(state, stop ? null : deadline(delayMs), this.#c.safeText(reason, 'reason'), now(), taskId);
+      this.#c.event('task', taskId, 'recovery.decided', actor, reason, { attemptId, state, deniedApproval:denied, delayMs, preservedAttemptBudget:true }, taskId);
     });
   }
   controlTask(id: string, operation: 'pause' | 'cancel' | 'resume' | 'retry', expectedRevision: number, context: CommandActor, reason: string): TaskSnapshot {

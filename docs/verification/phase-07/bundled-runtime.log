@@ -1,0 +1,184 @@
+TAP version 13
+# Subtest: private Git worktree preserves source dirty/untracked and ignored development files
+ok 1 - private Git worktree preserves source dirty/untracked and ignored development files
+  ---
+  duration_ms: 121.0257
+  type: 'test'
+  ...
+# Subtest: deterministic PostgreSQL recovery precedes model repair, preserves evidence and cleans only task resources (simulated Docker)
+ok 2 - deterministic PostgreSQL recovery precedes model repair, preserves evidence and cleans only task resources (simulated Docker)
+  ---
+  duration_ms: 572.011321
+  type: 'test'
+  ...
+# Subtest: environment blocks safely: unavailable
+ok 3 - environment blocks safely: unavailable
+  ---
+  duration_ms: 170.983619
+  type: 'test'
+  ...
+# Subtest: environment blocks safely: budget
+ok 4 - environment blocks safely: budget
+  ---
+  duration_ms: 384.375476
+  type: 'test'
+  ...
+# Subtest: environment blocks safely: repeated
+ok 5 - environment blocks safely: repeated
+  ---
+  duration_ms: 467.927261
+  type: 'test'
+  ...
+# Subtest: environment blocks safely: missing-key
+ok 6 - environment blocks safely: missing-key
+  ---
+  duration_ms: 268.637544
+  type: 'test'
+  ...
+# Subtest: environment blocks safely: install-denied
+ok 7 - environment blocks safely: install-denied
+  ---
+  duration_ms: 310.874662
+  type: 'test'
+  ...
+# Subtest: explicit mock contract is marked mock and live integration unverified (simulated Docker)
+ok 8 - explicit mock contract is marked mock and live integration unverified (simulated Docker)
+  ---
+  duration_ms: 465.403086
+  type: 'test'
+  ...
+# Subtest: missing env creates non-secret development placeholders without copying example values
+ok 9 - missing env creates non-secret development placeholders without copying example values
+  ---
+  duration_ms: 452.052729
+  type: 'test'
+  ...
+# Subtest: frozen dependency installation requires explicit permission and remains sandboxed
+ok 10 - frozen dependency installation requires explicit permission and remains sandboxed
+  ---
+  duration_ms: 433.042214
+  type: 'test'
+  ...
+# Subtest: ownership validation prevents removal/adoption of unrelated Docker containers
+ok 11 - ownership validation prevents removal/adoption of unrelated Docker containers
+  ---
+  duration_ms: 0.359242
+  type: 'test'
+  ...
+# Subtest: unhealthy disposable database blocks recovery and never claims health success (simulated Docker)
+ok 12 - unhealthy disposable database blocks recovery and never claims health success (simulated Docker)
+  ---
+  duration_ms: 6127.579392
+  type: 'test'
+  ...
+# Subtest: mock template serves explicit contracts and health checks without a real external API
+ok 13 - mock template serves explicit contracts and health checks without a real external API
+  ---
+  duration_ms: 185.52527
+  type: 'test'
+  ...
+# Subtest: schema migration preserves legacy resource data and exposes cleanup status
+ok 14 - schema migration preserves legacy resource data and exposes cleanup status
+  ---
+  duration_ms: 1.741662
+  type: 'test'
+  ...
+# Subtest: environment budgets cannot be reset or changed without a persisted recovery intent
+ok 15 - environment budgets cannot be reset or changed without a persisted recovery intent
+  ---
+  duration_ms: 1780.087167
+  type: 'test'
+  ...
+# Subtest: missing images respect explicit pull permission: false
+ok 16 - missing images respect explicit pull permission: false
+  ---
+  duration_ms: 147.494473
+  type: 'test'
+  ...
+# Subtest: missing images respect explicit pull permission: true
+ok 17 - missing images respect explicit pull permission: true
+  ---
+  duration_ms: 382.002264
+  type: 'test'
+  ...
+# Subtest: image inspection infrastructure failures never trigger a pull or coding attempt
+ok 18 - image inspection infrastructure failures never trigger a pull or coding attempt
+  ---
+  duration_ms: 152.792529
+  type: 'test'
+  ...
+# Subtest: socket failures retain process diagnostics and do not retry with elevated permissions
+ok 19 - socket failures retain process diagnostics and do not retry with elevated permissions
+  ---
+  duration_ms: 137.696051
+  type: 'test'
+  ...
+# Subtest: control-plane failure during verification blocks without model repair: permission
+ok 20 - control-plane failure during verification blocks without model repair: permission
+  ---
+  duration_ms: 264.457348
+  type: 'test'
+  ...
+# Subtest: control-plane failure during verification blocks without model repair: container-start
+ok 21 - control-plane failure during verification blocks without model repair: container-start
+  ---
+  duration_ms: 258.353255
+  type: 'test'
+  ...
+# Subtest: permission failure provisioning PostgreSQL retains recovery evidence and the original access diagnostic
+ok 22 - permission failure provisioning PostgreSQL retains recovery evidence and the original access diagnostic
+  ---
+  duration_ms: 515.468601
+  type: 'test'
+  ...
+# Subtest: bounded retained-worktree recovery: repairable=true
+ok 23 - bounded retained-worktree recovery: repairable=true
+  ---
+  duration_ms: 8269.05482
+  type: 'test'
+  ...
+# Subtest: bounded retained-worktree recovery: repairable=false
+ok 24 - bounded retained-worktree recovery: repairable=false
+  ---
+  duration_ms: 7835.118042
+  type: 'test'
+  ...
+# Subtest: checkpoint reopens with preserved diff; changed worktree is rejected and denied approval prevents scheduling
+ok 25 - checkpoint reopens with preserved diff; changed worktree is rejected and denied approval prevents scheduling
+  ---
+  duration_ms: 4836.899274
+  type: 'test'
+  ...
+# Subtest: zero-token and unavailable cost accounting stop before invoking the provider
+ok 26 - zero-token and unavailable cost accounting stop before invoking the provider
+  ---
+  duration_ms: 310.766991
+  type: 'test'
+  ...
+# Subtest: structured taxonomy wins over logs; unknown failures never invite speculative repair
+ok 27 - structured taxonomy wins over logs; unknown failures never invite speculative repair
+  ---
+  duration_ms: 1.101329
+  type: 'test'
+  ...
+# Subtest: attempt, duplicate, elapsed, token and unknown-cost budgets fail closed; jitter is bounded
+ok 28 - attempt, duplicate, elapsed, token and unknown-cost budgets fail closed; jitter is bounded
+  ---
+  duration_ms: 1.040654
+  type: 'test'
+  ...
+# Subtest: aggregate elapsed budget prevents verification from starting after expiry
+ok 29 - aggregate elapsed budget prevents verification from starting after expiry
+  ---
+  duration_ms: 225.486879
+  type: 'test'
+  ...
+1..29
+# tests 29
+# suites 0
+# pass 29
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 21679.356305

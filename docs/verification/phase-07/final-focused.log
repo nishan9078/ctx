@@ -1,0 +1,54 @@
+TAP version 13
+# (node:230210) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: bounded retained-worktree recovery: repairable=true
+ok 1 - bounded retained-worktree recovery: repairable=true
+  ---
+  duration_ms: 11177.04202
+  type: 'test'
+  ...
+# Subtest: bounded retained-worktree recovery: repairable=false
+ok 2 - bounded retained-worktree recovery: repairable=false
+  ---
+  duration_ms: 11897.893834
+  type: 'test'
+  ...
+# Subtest: checkpoint reopens with preserved diff; changed worktree is rejected and denied approval prevents scheduling
+ok 3 - checkpoint reopens with preserved diff; changed worktree is rejected and denied approval prevents scheduling
+  ---
+  duration_ms: 6794.903381
+  type: 'test'
+  ...
+# Subtest: zero-token and unavailable cost accounting stop before invoking the provider
+ok 4 - zero-token and unavailable cost accounting stop before invoking the provider
+  ---
+  duration_ms: 151.975798
+  type: 'test'
+  ...
+# Subtest: structured taxonomy wins over logs; unknown failures never invite speculative repair
+ok 5 - structured taxonomy wins over logs; unknown failures never invite speculative repair
+  ---
+  duration_ms: 1.473954
+  type: 'test'
+  ...
+# Subtest: attempt, duplicate, elapsed, token and unknown-cost budgets fail closed; jitter is bounded
+ok 6 - attempt, duplicate, elapsed, token and unknown-cost budgets fail closed; jitter is bounded
+  ---
+  duration_ms: 0.414455
+  type: 'test'
+  ...
+# Subtest: aggregate elapsed budget prevents verification from starting after expiry
+ok 7 - aggregate elapsed budget prevents verification from starting after expiry
+  ---
+  duration_ms: 338.116145
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 30675.089338
